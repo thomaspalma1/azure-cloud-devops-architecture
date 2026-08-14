@@ -1,0 +1,126 @@
+# Docker - Containerização
+
+Corresponde à **Parte 3** do teste técnico.
+
+Esta seção atende ao seguinte requisito do enunciado:
+
+> **Explique:** Como organizaria os Dockerfiles da solução.
+> **Mostre:** 
+> - multi-stage build; 
+> - redução de tamanho das imagens; 
+> - boas práticas de segurança; 
+> - gerenciamento de variáveis de ambiente.
+
+**Premissa assumida:** o cenário do teste é hipotético e não há código-fonte real da aplicação. O próprio enunciado pede *"Dockerfiles (exemplo)"*. Os arquivos aqui assumem uma estrutura de projeto convencional (`src/Api`, `src/Worker`, `package.json` na raiz) e são funcionais, bastaria o código real na estrutura esperada para que buildassem. Todos passam sem avisos no [hadolint](https://github.com/hadolint/hadolint).
+
+---
+
+## Organização dos Dockerfiles
+
+**Cada Dockerfile pertence ao repositório da aplicação que ele empacota, não a um repositório central de infraestrutura.**
+
+No cenário original há quatro repositórios no Azure DevOps (`api`, `web`, `worker`, `infrastructure`). O Dockerfile depende diretamente da estrutura interna do projeto: caminho do `.csproj`, nome do assembly, diretório de saída do build. Se alguém renomeia `src/Api` para `src/Api.Host`, o Dockerfile quebra.
+
+Mantendo-o no mesmo repositório, a alteração de estrutura e a correção do Dockerfile acontecem **no mesmo Pull Request, sob a mesma revisão**. Se o Dockerfile vivesse em `infrastructure`, seriam dois Pull Requests em repositórios diferentes que precisam ser mesclados em ordem, e o build fica quebrada no intervalo.
+
+> Neste repositório de entrega, os três Dockerfiles estão agrupados sob `docker/` apenas para facilitar a avaliação.
+
+### Estrutura do diretório
+
+```
+docker/
+├── README.md
+├── api/
+│   ├── Dockerfile
+│   └── .dockerignore
+├── web/
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── nginx.conf
+│   └── docker-entrypoint.d/
+│       └── 10-generate-env-config.sh
+└── worker/
+    ├── Dockerfile
+    └── .dockerignore
+```
+
+---
+
+## `api/Dockerfile`
+
+**Finalidade:** empacota a API REST em .NET 10, que é o componente central da solução, recebe as requisições do front-end, acessa SQL Database e Redis, publica mensagens na fila consumida pelo Worker e integra com o Azure OpenAI.
+
+No ambiente provisionado, esta imagem é publicada no Azure Container Registry pela pipeline e executada como Container App com **ingress interno** (acessível apenas pelo front-end dentro do Container Apps Environment, nunca diretamente pela internet).
+
+### Estrutura em três estágios
+
+| Estágio | Imagem base | Papel |
+|---|---|---|
+| `restore` | `dotnet/sdk:10.0-noble` | Resolve as dependências NuGet |
+| `publish` | herda de `restore` | Compila e gera os artefatos publicados |
+| `final` | `dotnet/aspnet:10.0-noble-chiseled` | Recebe **apenas** os artefatos compilados |
+
+### A parser directive da primeira linha
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+```
+
+Apesar da aparência, **não é um comentário**: é uma *parser directive* lida pelo BuildKit antes do parsing do arquivo. Ela fixa a versão da sintaxe do Dockerfile e habilita recursos modernos como `COPY --chmod`. Precisa ser a primeira linha do arquivo.
+
+### Por que o restore é um estágio separado?
+
+O ganho do multi-stage não está só em separar build de runtime, está em **ordenar as instruções pela frequência com que mudam**:
+
+```dockerfile
+COPY ["src/Api/Api.csproj", "src/Api/"]   # muda raramente
+RUN dotnet restore ...                     # camada permanece em cache
+
+COPY src/ src/                             # muda a cada commit
+RUN dotnet publish ... --no-restore
+```
+
+Copiar apenas o `.csproj` antes do código-fonte faz com que a camada de restore permaneça em cache enquanto as dependências não mudarem. Na prática, um build de rotina pula inteiramente o download de pacotes NuGet, normalmente a maior parte do tempo de build.
+
+Se o `COPY src/` viesse antes do restore, **qualquer** alteração de uma linha invalidaria o cache e forçaria o download completo das dependências a cada build.
+
+### Por que a imagem final é chiseled?
+
+`dotnet/aspnet:10.0-noble-chiseled` é uma imagem *distroless*: contém apenas o conjunto mínimo de pacotes que o .NET precisa, **sem shell, sem gerenciador de pacotes e sem utilitários de sistema**. Um atacante que consiga execução de código no container não encontra `bash`, `curl`, `apt` ou `wget` para escalar o ataque. Menos pacotes também significa menos CVEs herdadas do sistema operacional.
+
+O SDK do .NET pesa cerca de 800 MB e não é necessário para *executar* a aplicação, apenas para compilá-la. Com o multi-stage build, esse estágio é descartado e a imagem final fica em torno de **110 MB**.
+
+> **Consequência assumida:** sem shell no container, não é possível declarar `HEALTHCHECK` baseado em `curl` nem depurar com `docker exec`. O health check é configurado como *probe* do Container Apps, executado pela plataforma e não de dentro do container. Isso é preferível: a plataforma passa a ser a fonte de verdade sobre a saúde da réplica.
+
+### Decisões linha a linha
+
+| Instrução | Motivo |
+|---|---|
+| `ARG DOTNET_VERSION=10.0` | Versão parametrizada no topo, atualizar a versão do .NET é mudar uma linha, não caçar ocorrências pelo arquivo |
+| `--runtime linux-x64` no restore e no publish | Restaura e publica para um runtime específico, permitindo `--no-restore` no publish sem refazer o trabalho |
+| `--self-contained false` | A imagem base já contém o runtime .NET; empacotá-lo novamente duplicaria ~70 MB |
+| `-p:PublishReadyToRun=true` | Pré-compila IL para código nativo. **Aumenta** a imagem em alguns MB, mas reduz o tempo de startup, ver justificativa abaixo |
+| `-p:Version=${VERSION}` | Versão injetada pela pipeline, tornando a versão do assembly rastreável até o build que a gerou |
+| `ENV ASPNETCORE_HTTP_PORTS=8080` | Porta não privilegiada (>1024): processos não-root não podem fazer bind abaixo de 1024 |
+| `ENV DOTNET_EnableDiagnostics=0` | Desliga o diagnostic server (usado por `dotnet-trace`/`dotnet-dump`), que é superfície de ataque desnecessária fora de desenvolvimento |
+| `COPY --chown=$APP_UID:$APP_UID` | Arquivos já entram com o dono correto, evitando um `RUN chown` que criaria uma camada adicional duplicando o conteúdo |
+| `USER $APP_UID` | Executa como usuário sem privilégios. `$APP_UID` (1654) é definido pelas imagens base oficiais do .NET |
+| `ENTRYPOINT ["dotnet", "Api.dll"]` | Forma *exec* (não *shell*): o processo roda como PID 1 e recebe `SIGTERM` diretamente, permitindo shutdown gracioso quando o Container Apps reduz réplicas |
+
+### Sobre `PublishReadyToRun` e o scale-to-zero
+
+Esta flag aumenta o tamanho da imagem em alguns MB em troca de um startup mais rápido, uma escolha que só faz sentido à luz do dimensionamento definido em [`sizing/`](../sizing/README.md#escalabilidade-automática).
+
+Como os Container Apps operam com **scale-to-zero** em homologação, toda requisição após um período de ociosidade dispara um *cold start*. Trocar alguns MB de imagem por menos tempo de inicialização é vantajoso nesse cenário. Em um serviço com réplica sempre ativa (`min_replicas = 1`), o cálculo poderia ser diferente.
+
+### Como buildar
+
+```bash
+docker build -f docker/api/Dockerfile \
+  --build-arg VERSION=1.0.0 \
+  -t acracdahomolog.azurecr.io/api:1.0.0 .
+```
+
+O build context é a **raiz do repositório `api`**, não o diretório `docker/api/`, por isso o `.` no final e o `-f` apontando para o caminho do Dockerfile. Os caminhos dentro do arquivo (`src/Api/...`) são relativos a essa raiz.
+
+No pipeline, esse build é executado pelo template `docker-build-push.yaml`, que também faz o push para o Azure Container Registry, ver [`pipelines/`](../pipelines/README.md).

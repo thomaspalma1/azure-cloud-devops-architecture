@@ -20,3 +20,21 @@
 | 📈 [**Observability**](./observability) | `Logs centralizados`, métricas, dashboards, alertas e `distributed tracing` |
 | 🤖 [**Ai-integration**](./ai-integration) | `Azure AI Foundry`, gestão de `prompts`, consumo e `controle de custos` |
 | 🔧 [**Troubleshooting**](./troubleshooting) | Investigação e resolução dos `cenários propostos` |
+
+
+```
+docker
+├── api
+│   ├── Dockerfile
+│   └── README.md
+├── docker
+│   └── web
+│       └── docker-entrypoint.d
+├── README.md
+├── web
+│   ├── Dockerfile
+│   └── README.md
+└── worker
+    ├── Dockerfile
+    └── README.md
+```

@@ -27,10 +27,6 @@ COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=build --chown=nginx:nginx /src/dist/${APP_NAME}/browser /usr/share/nginx/html
 
-COPY --chown=nginx:nginx --chmod=0755 \
-     docker-entrypoint.d/10-generate-env-config.sh \
-     /docker-entrypoint.d/10-generate-env-config.sh
-
 USER 101
 
 EXPOSE 8080

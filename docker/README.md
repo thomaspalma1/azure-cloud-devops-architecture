@@ -105,3 +105,62 @@ docker build -f docker/api/Dockerfile \
 O build context é a **raiz do repositório `api`**, não o diretório `docker/api/`, por isso o `.` no final e o `-f` apontando para o caminho do Dockerfile. Os caminhos dentro do arquivo (`src/Api/...`) são relativos a essa raiz.
 
 No pipeline, esse build é executado pelo template `docker-build-push.yaml`, que também faz o push para o Azure Container Registry, ver [`pipelines/`](../pipelines/README.md).
+
+
+## `api/.dockerignore`
+
+**Finalidade:** define o que **não** é enviado ao daemon do Docker quando o build começa. Atende diretamente a dois dos quatro itens que o enunciado pede para demonstrar: *redução de tamanho das imagens* e *boas práticas de segurança*.
+
+### Como funciona o build context
+
+Ao executar `docker build ... .`, o Docker empacota **todo o conteúdo do diretório indicado** (o `.`) e envia para o daemon antes de processar qualquer instrução do Dockerfile. Sem `.dockerignore`, isso inclui `bin/`, `obj/`, o histórico completo do `.git` e qualquer arquivo de configuração local — mesmo que o Dockerfile nunca use nada disso.
+
+O impacto é duplo:
+
+| Problema | Consequência |
+|---|---|
+| Contexto grande | Cada build gasta tempo empacotando e transferindo centenas de MB desnecessários |
+| Invalidação de cache | Um `COPY . .` copia arquivos irrelevantes; alterar qualquer um deles invalida a camada e força rebuild |
+| **Vazamento de segredo** | Um `appsettings.Development.json` com senha entra na imagem e vai parar no registry |
+
+### O bloco mais importante
+
+```yaml
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/*.user
+**/secrets.json
+**/.env
+**/.env.*
+**/*.pfx
+**/*.key
+**/*.pem
+```
+
+Esta é a primeira barreira contra credenciais entrando na imagem. O risco é real e silencioso: `appsettings.Development.json` costuma conter connection strings com senha para o banco local, e nada no processo de build avisa que ele foi copiado. Uma vez dentro de uma camada da imagem, o valor é recuperável por qualquer pessoa com acesso de pull ao registry — inclusive se uma camada posterior "apagar" o arquivo, já que a camada anterior continua no histórico.
+
+Os padrões `*.pfx`, `*.key` e `*.pem` cobrem certificados e chaves privadas, que ocasionalmente ficam no diretório do projeto durante desenvolvimento local.
+
+> Esta é a **primeira** de três camadas de proteção. As outras duas são: nenhum `ARG`/`ENV` carregando segredo (ver seção sobre variáveis de ambiente) e injeção em runtime a partir do Key Vault via Managed Identity (ver [`security/`](../security/README.md)).
+
+### Os demais blocos
+
+| Bloco | Motivo |
+|---|---|
+| `**/bin/`, `**/obj/`, `**/out/`, `**/publish/` | Artefatos de build da máquina local. Além de inúteis, podem **conflitar** com o build dentro do container — um `obj/` gerado com outro RID ou versão de SDK causa erros de restore difíceis de diagnosticar |
+| `.git/` | O histórico completo do repositório frequentemente é a maior pasta do projeto, e nada do build depende dele |
+| `azure-pipelines*.yaml`, `.github/` | Definições de CI não fazem parte da aplicação |
+| `.vs/`, `.vscode/`, `.idea/` | Configuração de IDE, específica de cada desenvolvedor |
+| `**/Dockerfile*`, `**/docker-compose*.yml` | O Dockerfile é lido pelo `-f`, não precisa estar dentro do contexto |
+| `**/*.md`, `docs/` | Documentação não entra em imagem de runtime |
+| `**/*Tests/`, `**/*.Tests/` | Projetos de teste são compilados e executados na pipeline, em etapa anterior ao build da imagem. A imagem de runtime não deve conter código de teste |
+
+### Sobre a sintaxe
+
+O padrão `**/` faz o match em qualquer nível de diretório. Escrever `bin/` sozinho excluiria apenas um `bin` na raiz do contexto; `**/bin/` cobre `src/Api/bin`, `src/Shared/bin` e assim por diante — necessário em soluções .NET com múltiplos projetos.
+
+### Relação com o Dockerfile
+
+O `.dockerignore` é o que torna seguro usar `COPY src/ src/` no estágio de publish. Sem ele, essa instrução arrastaria `bin/`, `obj/` e arquivos de configuração local junto com o código-fonte.
+
+Vale notar que o `.dockerignore` **precisa estar na raiz do build context**, não ao lado do Dockerfile. Como o build é executado a partir da raiz do repositório `api`, este arquivo vive lá — aqui em `docker/api/` ele está apenas agrupado para facilitar a avaliação.

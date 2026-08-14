@@ -4,7 +4,7 @@ variable "resource_group_name" {
 }
 
 variable "location" {
-  description = "Região do Azure"
+  description = "Regiao do Azure."
   type        = string
 }
 
@@ -13,8 +13,8 @@ variable "workload" {
   type        = string
 }
 
-variable "enviroment" {
-  description = "Nome do ambiente"
+variable "environment" {
+  description = "Nome do ambiente."
   type        = string
 }
 

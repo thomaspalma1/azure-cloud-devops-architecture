@@ -13,8 +13,6 @@ Esta seção atende ao seguinte requisito do enunciado:
 
 **Premissa assumida:** o cenário do teste é hipotético e não há código-fonte real da aplicação. O próprio enunciado pede *"Dockerfiles (exemplo)"*. Os arquivos aqui assumem uma estrutura de projeto convencional (`src/Api`, `src/Worker`, `package.json` na raiz) e são funcionais, bastaria o código real na estrutura esperada para que buildassem. Todos passam sem avisos no [hadolint](https://github.com/hadolint/hadolint).
 
----
-
 ## Organização dos Dockerfiles
 
 **Cada Dockerfile pertence ao repositório da aplicação que ele empacota, não a um repositório central de infraestrutura.**
@@ -27,24 +25,7 @@ Mantendo-o no mesmo repositório, a alteração de estrutura e a correção do D
 
 ### Estrutura do diretório
 
-```
-docker/
-├── README.md
-├── api/
-│   ├── Dockerfile
-│   └── .dockerignore
-├── web/
-│   ├── Dockerfile
-│   ├── .dockerignore
-│   ├── nginx.conf
-│   └── docker-entrypoint.d/
-│       └── 10-generate-env-config.sh
-└── worker/
-    ├── Dockerfile
-    └── .dockerignore
-```
-
----
+![ProjectStructure](../docs/docker-structure.png)
 
 ## `api/Dockerfile`
 

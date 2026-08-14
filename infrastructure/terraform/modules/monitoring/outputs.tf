@@ -4,7 +4,7 @@ output "log_analytics_workspace_id" {
 }
 
 output "log_analytics_workspace_customer_id" {
-  description = "Customer ID (workspace ID) usado pelo Container Apps Environment."
+  description = "Customer ID do workspace, usado pelo Container Apps Environment."
   value       = azurerm_log_analytics_workspace.this.workspace_id
 }
 

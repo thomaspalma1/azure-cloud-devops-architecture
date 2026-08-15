@@ -1,0 +1,29 @@
+# Copie este arquivo para terraform.tfvars (ja ignorado pelo Git) e preencha os
+# valores reais. Nenhum destes valores deve ser commitado.
+
+# ID da subscription do Azure onde o ambiente sera provisionado.
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# Regiao do Azure. Deve ter suporte a Azure Managed Redis e Container Apps.
+location = "brazilsouth"
+
+# Nome do grupo do Entra ID definido como administrador do SQL Server.
+entra_admin_login = "grp-sql-admins-homolog"
+
+# Object ID do grupo administrador no Entra ID (az ad group show --group <nome> --query id).
+entra_admin_object_id = "00000000-0000-0000-0000-000000000000"
+
+# --- Opcionais: os valores abaixo ja tem default em variables.tf ---
+
+# workload    = "acda"
+# environment = "homolog"
+# sql_sku_name            = "S1"
+# redis_sku_name          = "Balanced_B0"
+# container_registry_sku  = "Basic"
+# log_daily_quota_gb      = 1
+# image_tag               = "latest"
+
+tags = {
+  cost_center = "engineering"
+  owner       = "plataforma"
+}

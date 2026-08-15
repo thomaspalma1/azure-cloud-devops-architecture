@@ -93,6 +93,7 @@ module "redis_cache" {
   sku_name                   = var.redis_sku_name
   private_endpoint_subnet_id = module.networking.private_endpoints_subnet_id
   private_dns_zone_id        = module.networking.private_dns_zone_ids["redis"]
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
   tags                       = local.tags
 }
 
@@ -173,7 +174,6 @@ module "container_app_api" {
   env_vars = {
     ASPNETCORE_ENVIRONMENT = "Homolog"
     ASPNETCORE_HTTP_PORTS  = "8080"
-    AZURE_CLIENT_ID        = ""
   }
 
   secrets = {
@@ -216,6 +216,18 @@ module "container_app_web" {
   ingress = {
     external_enabled = true
     target_port      = 8080
+  }
+
+  env_vars = {
+    ASPNETCORE_ENVIRONMENT = "Homolog"
+    ASPNETCORE_HTTP_PORTS  = "8080"
+  }
+
+  secrets = {
+    "appinsights-connection-string" = {
+      key_vault_secret_id = azurerm_key_vault_secret.app_insights_connection_string.versionless_id
+      env_var_name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+    }
   }
 
   tags = local.tags

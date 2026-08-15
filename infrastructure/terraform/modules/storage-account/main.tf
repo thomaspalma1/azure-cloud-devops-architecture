@@ -73,6 +73,28 @@ resource "azurerm_private_endpoint" "this" {
   }
 }
 
+resource "azurerm_monitor_diagnostic_setting" "blob" {
+  name                       = "diag-storage-blob"
+  target_resource_id         = "${azurerm_storage_account.this.id}/blobServices/default"
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "StorageRead"
+  }
+
+  enabled_log {
+    category = "StorageWrite"
+  }
+
+  enabled_log {
+    category = "StorageDelete"
+  }
+
+  enabled_metric {
+    category = "Transaction"
+  }
+}
+
 resource "azurerm_monitor_diagnostic_setting" "queue" {
   name                       = "diag-storage-queue"
   target_resource_id         = "${azurerm_storage_account.this.id}/queueServices/default"
@@ -84,6 +106,10 @@ resource "azurerm_monitor_diagnostic_setting" "queue" {
 
   enabled_log {
     category = "StorageWrite"
+  }
+
+  enabled_log {
+    category = "StorageDelete"
   }
 
   enabled_metric {

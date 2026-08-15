@@ -74,6 +74,15 @@ resource "azurerm_container_app" "this" {
       cpu    = var.cpu
       memory = var.memory
 
+      # A aplicacao usa a identidade gerenciada atribuida pelo usuario (nao a de sistema),
+      # entao o SDK do Azure precisa do client ID explicito para o DefaultAzureCredential
+      # (usado, por exemplo, na autenticacao Active Directory Default do SQL Database)
+      # resolver a identidade correta em vez de tentar a identidade de sistema, que nao existe aqui.
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.this.client_id
+      }
+
       dynamic "env" {
         for_each = var.env_vars
 
@@ -128,16 +137,16 @@ resource "azurerm_container_app" "this" {
       content {
         name             = "queue-depth"
         custom_rule_type = "azure-queue"
+        # Autentica o scaler KEDA via identidade gerenciada (identity_id), sem secret.
+        # A storage account do projeto tem shared_access_key_enabled = false, entao nao
+        # ha connection string disponivel para autenticacao via secret; a identidade
+        # ja recebe a role "Storage Queue Data Contributor" na role assignment do ambiente.
+        identity_id = azurerm_user_assigned_identity.this.id
 
         metadata = {
           accountName = custom_scale_rule.value.account_name
           queueName   = custom_scale_rule.value.queue_name
           queueLength = tostring(custom_scale_rule.value.queue_length)
-        }
-
-        authentication {
-          secret_name       = "queue-identity"
-          trigger_parameter = "workloadIdentity"
         }
       }
     }

@@ -1,0 +1,142 @@
+name: $(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - develop
+      - main
+
+pr:
+  branches:
+    include:
+      - develop
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: acda-homolog
+  - name: componentName
+    value: api
+  - name: containerAppName
+    value: ca-api-acda-homolog
+  - name: imageTag
+    value: $(Build.BuildNumber)
+
+stages:
+  - stage: Build
+    displayName: Build e testes
+    jobs:
+      - job: Build
+        steps:
+          - task: UseDotNet@2
+            displayName: Instalar .NET SDK
+            inputs:
+              packageType: sdk
+              version: 10.0.x
+
+          - task: DotNetCoreCLI@2
+            displayName: Restaurar dependencias
+            inputs:
+              command: restore
+              projects: src/Api/Api.csproj
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: src/Api/Api.csproj
+              arguments: --configuration Release --no-restore
+
+          - task: DotNetCoreCLI@2
+            displayName: Testes unitarios
+            inputs:
+              command: test
+              projects: tests/Api.Tests/Api.Tests.csproj
+              arguments: --configuration Release --no-build
+
+          - task: DotNetCoreCLI@2
+            displayName: Publicacao
+            inputs:
+              command: publish
+              projects: src/Api/Api.csproj
+              arguments: --configuration Release --no-build --output $(Build.ArtifactStagingDirectory)
+              publishWebProjects: false
+              zipAfterPublish: false
+
+  - stage: Deploy
+    displayName: Deploy em homologacao
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - job: Deploy
+        steps:
+          - task: Docker@2
+            displayName: Build e push da imagem
+            inputs:
+              command: buildAndPush
+              repository: $(componentName)
+              dockerfile: docker/api/Dockerfile
+              buildContext: $(Build.SourcesDirectory)
+              containerRegistry: $(containerRegistryConnection)
+              tags: $(imageTag)
+
+          - task: AzureCLI@2
+            displayName: Deploy no Container Apps
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                PREVIOUS=$(az containerapp show \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroupName) \
+                  --query properties.latestRevisionName -o tsv)
+
+                echo "Revisao atual: $PREVIOUS"
+                echo "##vso[task.setvariable variable=previousRevision]$PREVIOUS"
+
+                az containerapp update \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroupName) \
+                  --image $(containerRegistryName).azurecr.io/$(componentName):$(imageTag)
+
+          - task: AzureCLI@2
+            displayName: Smoke test
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                FQDN=$(az containerapp show \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroupName) \
+                  --query properties.configuration.ingress.fqdn -o tsv)
+
+                for i in $(seq 1 10); do
+                  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$FQDN/healthz" || echo 000)
+                  echo "Tentativa $i: HTTP $STATUS"
+                  if [ "$STATUS" = "200" ]; then exit 0; fi
+                  sleep 15
+                done
+
+                echo "Smoke test falhou."
+                exit 1
+
+          - task: AzureCLI@2
+            displayName: Rollback
+            condition: failed()
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Revertendo para $(previousRevision)"
+
+                az containerapp ingress traffic set \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroupName) \
+                  --revision-weight $(previousRevision)=100
+
+                exit 1

@@ -68,8 +68,13 @@ stages:
               azureSubscription: $(azureSubscription)
               scriptType: bash
               scriptLocation: scriptPath
-              scriptPath: scripts/deploy-container-app.sh
-              arguments: $(containerAppName) $(resourceGroupName) $(containerRegistryName) $(componentName) $(imageTag)
+              scriptPath: pipelines/scripts/deploy-container-app.sh
+            env:
+              CONTAINER_APP_NAME: $(containerAppName)
+              RESOURCE_GROUP: $(resourceGroupName)
+              REGISTRY_NAME: $(containerRegistryName)
+              COMPONENT_NAME: $(componentName)
+              IMAGE_TAG: $(imageTag)
 
           - task: AzureCLI@2
             displayName: Smoke test
@@ -77,8 +82,10 @@ stages:
               azureSubscription: $(azureSubscription)
               scriptType: bash
               scriptLocation: scriptPath
-              scriptPath: scripts/smoke-test.sh
-              arguments: $(containerAppName) $(resourceGroupName)
+              scriptPath: pipelines/scripts/smoke-test.sh
+            env:
+              CONTAINER_APP_NAME: $(containerAppName)
+              RESOURCE_GROUP: $(resourceGroupName)
 
           - task: AzureCLI@2
             displayName: Rollback
@@ -87,5 +94,8 @@ stages:
               azureSubscription: $(azureSubscription)
               scriptType: bash
               scriptLocation: scriptPath
-              scriptPath: scripts/rollback.sh
-              arguments: $(containerAppName) $(resourceGroupName) $(previousRevision)
+              scriptPath: pipelines/scripts/rollback.sh
+            env:
+              CONTAINER_APP_NAME: $(containerAppName)
+              RESOURCE_GROUP: $(resourceGroupName)
+              PREVIOUS_REVISION: $(previousRevision)

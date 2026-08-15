@@ -8,7 +8,7 @@ resource "azurerm_container_registry" "this" {
   location                      = var.location
   sku                           = var.sku
   admin_enabled                 = false
-  public_network_access_enabled = true
+  public_network_access_enabled = var.public_network_access_enabled
   tags                          = var.tags
 }
 

@@ -46,6 +46,11 @@ variable "private_dns_zone_id" {
   type        = string
 }
 
+variable "log_analytics_workspace_id" {
+  description = "ID do workspace de destino dos logs e metricas de diagnostico."
+  type        = string
+}
+
 variable "tags" {
   description = "Tags aplicadas aos recursos."
   type        = map(string)

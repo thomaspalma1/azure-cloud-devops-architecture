@@ -42,3 +42,17 @@ resource "azurerm_private_endpoint" "this" {
     private_dns_zone_ids = [var.private_dns_zone_id]
   }
 }
+
+resource "azurerm_monitor_diagnostic_setting" "this" {
+  name                       = "diag-redis-cache"
+  target_resource_id         = azurerm_managed_redis.this.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "ConnectionEvents"
+  }
+
+  enabled_metric {
+    category = "AllMetrics"
+  }
+}

@@ -52,9 +52,9 @@ stages:
       - job: Deploy
         steps:
           - task: Docker@2
-            displayName: Build da imagem
+            displayName: Build e push da imagem
             inputs:
-              command: build
+              command: buildAndPush
               repository: $(componentName)
               dockerfile: docker/web/Dockerfile
               buildContext: $(Build.SourcesDirectory)
@@ -62,55 +62,23 @@ stages:
               tags: $(imageTag)
               arguments: --build-arg BUILD_CONFIGURATION=homolog --build-arg APP_NAME=web
 
-          - task: Docker@2
-            displayName: Push da imagem
-            inputs:
-              command: push
-              repository: $(componentName)
-              containerRegistry: $(containerRegistryConnection)
-              tags: $(imageTag)
-
           - task: AzureCLI@2
             displayName: Deploy no Container Apps
             inputs:
               azureSubscription: $(azureSubscription)
               scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                PREVIOUS=$(az containerapp show \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroupName) \
-                  --query properties.latestRevisionName -o tsv)
-
-                echo "Revisao atual: $PREVIOUS"
-                echo "##vso[task.setvariable variable=previousRevision]$PREVIOUS"
-
-                az containerapp update \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroupName) \
-                  --image $(containerRegistryName).azurecr.io/$(componentName):$(imageTag)
+              scriptLocation: scriptPath
+              scriptPath: scripts/deploy-container-app.sh
+              arguments: $(containerAppName) $(resourceGroupName) $(containerRegistryName) $(componentName) $(imageTag)
 
           - task: AzureCLI@2
             displayName: Smoke test
             inputs:
               azureSubscription: $(azureSubscription)
               scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                FQDN=$(az containerapp show \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroupName) \
-                  --query properties.configuration.ingress.fqdn -o tsv)
-
-                for i in $(seq 1 10); do
-                  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$FQDN/healthz" || echo 000)
-                  echo "Tentativa $i: HTTP $STATUS"
-                  if [ "$STATUS" = "200" ]; then exit 0; fi
-                  sleep 15
-                done
-
-                echo "Smoke test falhou."
-                exit 1
+              scriptLocation: scriptPath
+              scriptPath: scripts/smoke-test.sh
+              arguments: $(containerAppName) $(resourceGroupName)
 
           - task: AzureCLI@2
             displayName: Rollback
@@ -118,13 +86,6 @@ stages:
             inputs:
               azureSubscription: $(azureSubscription)
               scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Revertendo para $(previousRevision)"
-
-                az containerapp ingress traffic set \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroupName) \
-                  --revision-weight $(previousRevision)=100
-
-                exit 1
+              scriptLocation: scriptPath
+              scriptPath: scripts/rollback.sh
+              arguments: $(containerAppName) $(resourceGroupName) $(previousRevision)

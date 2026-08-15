@@ -22,3 +22,13 @@ output "private_dns_zone_ids" {
   description = "Mapa de IDs das private DNS zones, indexado por servico."
   value       = { for k, v in azurerm_private_dns_zone.this : k => v.id }
 }
+
+output "container_apps_network_security_group_id" {
+  description = "ID do NSG associado a subnet do Container Apps Environment."
+  value       = azurerm_network_security_group.container_apps.id
+}
+
+output "private_endpoints_network_security_group_id" {
+  description = "ID do NSG associado a subnet dos private endpoints."
+  value       = azurerm_network_security_group.private_endpoints.id
+}

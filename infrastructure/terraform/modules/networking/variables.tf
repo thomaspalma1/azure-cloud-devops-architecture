@@ -25,13 +25,13 @@ variable "address_space" {
 }
 
 variable "container_apps_subnet_prefix" {
-  description = "Prefixo da subnet delegada ao Container Apps Environment. Exige no minimo /23."
+  description = "Prefixo da subnet delegada ao Container Apps Environment. O environment usa workload profiles, que exigem no minimo /27; /23 e o default para dar margem de escala."
   type        = string
   default     = "10.20.0.0/23"
 
   validation {
-    condition     = tonumber(split("/", var.container_apps_subnet_prefix)[1]) <= 23
-    error_message = "A subnet do Container Apps Environment exige prefixo /23 ou maior."
+    condition     = tonumber(split("/", var.container_apps_subnet_prefix)[1]) <= 27
+    error_message = "A subnet do Container Apps Environment (workload profiles) exige prefixo /27 ou maior."
   }
 }
 

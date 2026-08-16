@@ -4,9 +4,9 @@ Corresponde à **Parte 8** do teste técnico.
 
 Este documento descreve como eu implementaria a observabilidade da aplicação, cobrindo logs centralizados, métricas, dashboards, alertas, rastreamento distribuído e análise de exceções.
 
-A proposta parte de um princípio simples: escolher o menor número de serviços que resolva todas as necessidades. O cenário do teste não informa volume de usuários, tamanho do time nem escala esperada, então evitei assumir uma infraestrutura grande. Cada serviço abaixo foi escolhido porque resolve um problema que os demais não resolvem.
+A proposta parte de um princípio simples: escolher o menor número de serviços que resolva todas as necessidades. O cenário do teste não informa volume de usuários, tamanho do time nem escala esperada, então evitei assumir uma infraestrutura grande. Organizei a escolha por necessidade, logs, métricas, dashboards, rastreamento, análise de exceções e alertas, e defini um único serviço responsável por cada uma, em vez de ter mais de uma ferramenta cobrindo a mesma coisa.
 
-Minha experiência prática em observabilidade vem principalmente de Prometheus e Grafana. Sempre que houver equivalência clara, faço a comparação, para deixar explícito que entendo a finalidade da ferramenta e não apenas o nome do serviço.
+Minha experiência prática em observabilidade vem principalmente de Prometheus e Grafana. Por isso, sempre que houver um equivalente claro, faço a comparação. Isso ajuda a situar a escolha em algo que já conheço, não só no nome do serviço.
 
 ## Logs centralizados
 
@@ -38,7 +38,7 @@ O papel do Log Analytics é o mesmo que o Loki cumpre em uma stack Grafana: cent
 
 **Serviço escolhido:** Azure Monitor
 
-### Como eu utilizaria
+### O que eu acompanharia
 
 Acompanharia dois níveis de métricas:
 
@@ -48,11 +48,11 @@ Acompanharia dois níveis de métricas:
 
 As métricas de plataforma são coletadas automaticamente pelo Azure Monitor, sem necessidade de configuração.
 
-### Por que eu escolheria
+### O que pesou na escolha
 
 As métricas de plataforma já estão disponíveis por padrão e aparentemente não possuem custo adicional. Introduzir outra ferramenta de coleta significaria manter um componente extra para obter dados que a própria plataforma já expõe.
 
-A profundidade da fila merece destaque no cenário: além de indicar a saúde do processamento assíncrono, é a métrica que dispara o autoscaling do Worker. Acompanhá-la permite entender se um crescimento no número de réplicas veio de aumento legítimo de carga ou de mensagens que não estão sendo consumidas.
+A profundidade da fila merece destaque: é ela que dispara o autoscaling do Worker. Acompanhá-la ajuda a diferenciar dois cenários parecidos — mais réplicas por aumento real de carga, ou mais réplicas porque as mensagens não estão sendo consumidas.
 
 ### Relação com ferramentas conhecidas
 
@@ -64,7 +64,7 @@ A diferença está no modelo de coleta. O Prometheus trabalha por *scraping*, co
 
 **Serviço escolhido:** Azure Workbooks
 
-### Como eu utilizaria
+### O que eu criaria
 
 Criaria dois workbooks:
 
@@ -74,13 +74,13 @@ Criaria dois workbooks:
 
 Os workbooks combinam consultas KQL e gráficos de métricas no mesmo painel, o que permite colocar lado a lado um gráfico de erros e a consulta que lista as exceções daquele período.
 
-### Por que eu escolheria
+### Por que os Workbooks e não o Grafana
 
 Os Workbooks já estão incluídos no Azure Monitor, sem custo adicional e sem serviço novo a provisionar.
 
 Considerei usar o Grafana gerenciado do Azure, já que tenho mais familiaridade com ele. Descartei porque traria custo de instância e entregaria essencialmente a mesma capacidade de visualização. Faria sentido em dois cenários: se o time já tivesse dashboards Grafana em uso, ou se fosse necessário reunir dados de várias nuvens em um painel único. Nenhum dos dois se aplica ao cenário do teste.
 
-Essa é a decisão em que mais deliberadamente escolhi a opção mais simples em detrimento da que eu conheço melhor.
+Foi aqui que mais conscientemente troquei a ferramenta que conheço melhor pela mais simples para o cenário.
 
 ### Relação com ferramentas conhecidas
 
@@ -90,7 +90,7 @@ Os Workbooks ocupam o lugar do Grafana. São menos flexíveis em personalizaçã
 
 **Serviço escolhido:** Application Insights
 
-### Como eu utilizaria
+### Como eu instrumentaria
 
 Adicionaria o SDK do Application Insights aos projetos .NET da API e do Worker, e configuraria a connection string por variável de ambiente, resolvida a partir do Key Vault.
 
@@ -98,7 +98,7 @@ Com isso seria possível acompanhar uma requisição desde a chamada do front-en
 
 No front-end Angular, utilizaria a versão web do SDK para capturar erros de JavaScript e tempo de carregamento das páginas.
 
-### Por que eu escolheria
+### Por que essa é a exceção da lista
 
 O rastreamento distribuído é a única necessidade da lista que não tem alternativa simples dentro do Azure. Sem ele, ao investigar uma requisição lenta seria preciso comparar manualmente logs de três componentes tentando reconstruir a ordem dos acontecimentos.
 
@@ -114,27 +114,27 @@ A função equivale à do Jaeger ou do Tempo em uma stack open source. A diferen
 
 **Serviço escolhido:** Application Insights
 
-### Como eu utilizaria
+### Como funcionaria no dia a dia
 
 O mesmo SDK que coleta os traces captura automaticamente as exceções não tratadas, agrupando-as por tipo e por local no código. Para cada exceção fica registrado o número de ocorrências, a versão da aplicação em que ocorreu e o trace completo da requisição que a originou.
 
 Utilizaria principalmente para dois propósitos: identificar qual erro é mais frequente antes de decidir o que corrigir primeiro, e verificar se um erro novo começou a aparecer logo após um deploy.
 
-### Por que eu escolheria
+### Por que não somar outra ferramenta
 
-Não adicionaria uma ferramenta específica de rastreamento de erros, como o Sentry, porque o Application Insights já cobre a necessidade. Manter duas ferramentas significaria alternar entre elas durante a investigação de um mesmo problema, justamente no momento em que a informação precisa estar reunida.
+Não adicionaria uma ferramenta específica de rastreamento de erros, porque o Application Insights já cobre a necessidade. Manter duas ferramentas significaria alternar entre elas durante a investigação de um mesmo problema, justamente no momento em que a informação precisa estar reunida.
 
 A vantagem de a análise de exceções e o rastreamento distribuído virem do mesmo serviço é poder partir de uma exceção e chegar ao trace completo da requisição, incluindo as chamadas que a antecederam.
 
 ### Relação com ferramentas conhecidas
 
-Cumpre o papel do Sentry: agrupar exceções repetidas, mostrar frequência e apontar a versão afetada. O Sentry oferece uma experiência mais refinada para essa tarefa específica; o Application Insights compensa por já estar integrado ao restante da telemetria.
+Cumpre o papel das ferramentas dedicadas de rastreamento de erros: agrupar exceções repetidas, mostrar frequência e apontar a versão afetada. Esse tipo de ferramenta costuma oferecer uma experiência mais refinada para essa tarefa específica; o Application Insights compensa por já estar integrado ao restante da telemetria.
 
 ## Alertas
 
 **Serviço escolhido:** Azure Monitor Alerts com Action Groups
 
-### Como eu utilizaria
+### Quais alertas eu configuraria
 
 Configuraria um conjunto pequeno de alertas, cada um ligado a um sintoma que exigiria ação:
 
@@ -148,7 +148,7 @@ Configuraria um conjunto pequeno de alertas, cada um ligado a um sintoma que exi
 
 As notificações seriam entregues por um Action Group configurado para e-mail e Microsoft Teams.
 
-### Por que eu escolheria
+### O critério para os alertas
 
 Manteria a lista curta de propósito. Alertas em excesso levam ao efeito contrário do pretendido: quando muitos disparam sem exigir ação, a equipe passa a ignorá-los, e o alerta que realmente importa se perde no meio.
 
@@ -192,7 +192,7 @@ Registro as alternativas que considerei e descartei, junto com a condição que 
 | Ferramenta externa de APM | Custo e integração adicionais sem ganho no cenário | Se a empresa já tivesse contrato e padronização em uma delas |
 | Ferramenta dedicada de rastreamento de erros | O Application Insights já cobre a necessidade | Se o time precisasse de fluxo de triagem de erros mais elaborado |
 
-O raciocínio em todos os casos foi o mesmo: adicionar um serviço só se ele resolvesse algo que os demais não resolvem.
+O raciocínio foi o mesmo em todos os casos: cada necessidade do cenário já tinha um serviço responsável por ela, um serviço adicional só entraria se sobrasse alguma necessidade sem cobertura.
 
 ## Observação sobre a implementação
 

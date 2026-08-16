@@ -51,15 +51,19 @@ Ao mesmo tempo, não adotei o GitFlow completo. A branch `release` não é obrig
 
 ### Padrão de nomes
 
-Utilizo o identificador do work item no início do nome da branch:
+Utilizo o identificador da atividade no início do nome da branch, seguido de uma descrição curta:
 
 ```
-feature/ACDA-123-upload-de-arquivos
-hotfix/ACDA-456-timeout-no-redis
+feature/4521-upload-de-arquivos
+hotfix/4530-timeout-no-redis
 release/1.4.0
 ```
 
-Adoto esse padrão porque o Azure DevOps vincula automaticamente a branch, os commits, o Pull Request e a build ao work item correspondente. Isso me dá rastreabilidade sem esforço manual.
+O identificador vem da ferramenta de gestão utilizada pelo time. No Azure DevOps Boards, corresponde ao número do work item. Se o time utilizar Jira ou outra ferramenta, o identificador segue o formato dessa ferramenta, como `PROJ-123`.
+
+Adoto esse padrão porque o Azure DevOps vincula automaticamente a branch, os commits, o Pull Request e a build ao work item correspondente. Isso me dá rastreabilidade sem esforço manual: a partir de uma revisão em execução consigo chegar até a atividade que originou a alteração.
+
+As branches de `release` seguem outro padrão, utilizando o número da versão que será publicada, porque elas não correspondem a uma atividade específica e sim a um conjunto de entregas.
 
 ---
 
@@ -70,7 +74,7 @@ Todo merge para `main`, `develop` ou `release` acontece exclusivamente por Pull 
 Configurei os Pull Requests da seguinte forma:
 
 * **Aprovação obrigatória**
-  * Exijo no mínimo duas aprovações.
+  * Exijo no mínimo duas aprovações
   * O autor não pode aprovar o próprio Pull Request
 * **Validação de build obrigatória**
   * O Pull Request só pode ser concluído se a pipeline de build e testes passar
@@ -282,7 +286,7 @@ Correções urgentes em produção não passam por `develop`. O fluxo que utiliz
 
 * **Criar a branch a partir de `main`**
   * `git checkout main`
-  * `git checkout -b hotfix/ACDA-456-timeout-no-redis`
+  * `git checkout -b hotfix/4530-timeout-no-redis`
   * Crio a partir de `main` porque a correção precisa partir exatamente do código que está em produção. Se eu criasse a partir de `develop`, levaria junto funcionalidades que ainda não foram homologadas.
 
 * **Aplicar a correção e abrir Pull Request para `main`**

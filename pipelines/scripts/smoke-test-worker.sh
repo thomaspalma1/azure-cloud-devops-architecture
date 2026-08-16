@@ -3,7 +3,6 @@
 # publicada chegou ao estado "Running".
 #
 # Variaveis de ambiente esperadas: CONTAINER_APP_NAME, RESOURCE_GROUP
-set -euo pipefail
 
 : "${CONTAINER_APP_NAME:?}" "${RESOURCE_GROUP:?}"
 

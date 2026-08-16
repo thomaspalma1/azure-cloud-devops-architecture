@@ -5,7 +5,6 @@
 #
 # Variaveis de ambiente esperadas:
 #   CONTAINER_APP_NAME, RESOURCE_GROUP, REGISTRY_NAME, COMPONENT_NAME, IMAGE_TAG
-set -euo pipefail
 
 : "${CONTAINER_APP_NAME:?}" "${RESOURCE_GROUP:?}" "${REGISTRY_NAME:?}" "${COMPONENT_NAME:?}" "${IMAGE_TAG:?}"
 

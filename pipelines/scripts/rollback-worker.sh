@@ -2,7 +2,6 @@
 # Rollback do worker: sem ingress, reativa a revisao anterior diretamente.
 #
 # Variaveis de ambiente esperadas: CONTAINER_APP_NAME, RESOURCE_GROUP, PREVIOUS_REVISION
-set -euo pipefail
 
 : "${CONTAINER_APP_NAME:?}" "${RESOURCE_GROUP:?}"
 
@@ -17,5 +16,3 @@ az containerapp revision activate \
   --name "$CONTAINER_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --revision "$PREVIOUS_REVISION"
-
-exit 1

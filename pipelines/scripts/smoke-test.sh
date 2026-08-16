@@ -3,7 +3,6 @@
 # Usado por componentes com ingress (api, web).
 #
 # Variaveis de ambiente esperadas: CONTAINER_APP_NAME, RESOURCE_GROUP
-set -euo pipefail
 
 : "${CONTAINER_APP_NAME:?}" "${RESOURCE_GROUP:?}"
 

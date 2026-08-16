@@ -8,7 +8,7 @@ O enunciado indica que a empresa pretende utilizar o `Azure AI Foundry` para int
 
 Considero importante ser **transparente** quanto ao meu nível de conhecimento neste tema.
 
-**Não tenho experiência profissional** com integração de Inteligência Artificial nem com o `Azure AI Foundry`. A proposta apresentada aqui foi construída a partir de pesquisa na documentação oficial da Microsoft e em materiais técnicos sobre o assunto, e não a partir de uma implementação que eu tenha conduzido.
+**Não tenho experiência profissional** com integração de Inteligência Artificial, nem com o `Azure AI Foundry` especificamente. O que apresento aqui é fruto de pesquisa na documentação oficial da Microsoft e em materiais técnicos sobre o assunto, não de uma implementação que eu tenha conduzido na prática.
 
 Por esse motivo, mantive a proposta **deliberadamente simples**. Existem diferentes formas de estruturar uma solução com IA, e não apresento esta como a única correta ou a mais adequada. Ela representa o que eu proporia como ponto de partida para o cenário do teste, com a expectativa de refiná-la conforme o time definisse os requisitos reais de uso.
 
@@ -67,7 +67,7 @@ Manteria os `prompts` em arquivos de texto dentro do repositório da aplicação
 
 Organizaria em uma pasta dedicada, com um arquivo por `prompt`, e carregaria o conteúdo na inicialização da aplicação.
 
-### Por que essa escolha
+### Por que versionar no repositório
 
 `Prompt` é conteúdo que define o comportamento da aplicação, de forma semelhante ao código. Mantê-lo versionado traz três benefícios diretos:
 
@@ -88,7 +88,7 @@ O `Azure AI Foundry` oferece uma ferramenta chamada `Prompt Flow`, voltada à cr
 
 ## Proteção das credenciais
 
-### Como eu faria
+### Como protegeria as credenciais
 
 Utilizaria `Managed Identity` para autenticar a `API` e o `Worker` no serviço de IA, da mesma forma que já é feito para o banco de dados e o `storage` nesta solução.
 
@@ -96,7 +96,7 @@ Com `Managed Identity`, a aplicação obtém o acesso a partir da identidade que
 
 Caso a `Managed Identity` não fosse suportada para alguma operação específica, armazenaria a chave no `Key Vault` e a leria em tempo de execução, **nunca** a colocando em arquivo de configuração ou variável de ambiente com valor fixo.
 
-### Por que essa escolha
+### Por que usar Managed Identity
 
 Adotaria a mesma abordagem já utilizada no restante da solução, o que traz **coerência** e evita introduzir um modelo de autenticação diferente apenas para este serviço.
 
@@ -106,7 +106,7 @@ Reforço o ponto da seção de arquitetura: independentemente do mecanismo escol
 
 ## Monitoramento do consumo
 
-### Como eu faria
+### Como acompanharia o consumo
 
 Aproveitaria os recursos já definidos na parte de observabilidade, sem adicionar ferramenta nova:
 
@@ -118,7 +118,7 @@ Aproveitaria os recursos já definidos na parte de observabilidade, sem adiciona
   * Configuraria um alerta para consumo de `tokens` acima do esperado em um intervalo de tempo
   * Configuraria um alerta para taxa de erro nas chamadas ao modelo
 
-### Por que essa escolha
+### Por que focar no consumo de tokens
 
 O **consumo de tokens** é a informação central, porque é ela que determina o custo. Acompanhar apenas o número de requisições não seria suficiente, já que uma única requisição com muito texto pode consumir mais que várias requisições curtas.
 
@@ -126,7 +126,7 @@ Como o `Application Insights` já estará instrumentado na `API` e no `Worker`, 
 
 ## Controle de custos
 
-### Como eu faria
+### Como controlaria os custos
 
 Adotaria quatro medidas:
 
@@ -140,7 +140,7 @@ Adotaria quatro medidas:
 * **Controle de uso por usuário na API**
   * Limitaria a quantidade de requisições que um mesmo usuário pode fazer em determinado intervalo
 
-### Por que essa escolha
+### Por que essas medidas
 
 O **limite de tokens por minuto** é a medida mais importante, porque é a única que efetivamente impede o gasto. As demais são de acompanhamento: elas avisam que o custo está subindo, mas **não o interrompem**.
 

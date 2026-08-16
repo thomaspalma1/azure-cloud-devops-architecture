@@ -218,12 +218,8 @@ O `Log Analytics Workspace` e o `Application Insights` já estão provisionados 
 | Sigla | Significado |
 |-------|-------------|
 | `AKS` | Azure Kubernetes Service |
-| `API` | Application Programming Interface |
 | `APM` | Application Performance Monitoring |
-| `CPU` | Central Processing Unit |
 | `DTU` | Database Transaction Unit |
-| `HTTP` | Hypertext Transfer Protocol |
 | `KQL` | Kusto Query Language |
 | `LogQL` | Log Query Language |
 | `SDK` | Software Development Kit |
-| `SQL` | Structured Query Language |

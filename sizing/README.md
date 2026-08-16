@@ -33,7 +33,7 @@ Em um projeto real, eu trataria esse dimensionamento como ponto de partida e o r
 | `Container Apps Environment` | `Consumption` | Sem custo próprio | Não se aplica |
 | `Azure Container Registry` | `Basic` | 5 dólares | Apenas o armazenamento |
 | `Azure SQL Database` | `Standard S1` | 29 dólares | Não |
-| `Azure Managed Redis` | `Balanced B0`, sem alta disponibilidade | 13 dólares | Não |
+| `Azure Managed Redis` | `Balanced B0`, sem alta disponibilidade | 12 dólares | Não |
 | `Storage Account` | `Standard LRS`, camada `Hot` | 2 dólares | Sim |
 | `Key Vault` | `Standard` | 1 dólar | Sim |
 | `Log Analytics Workspace` | `Pay as you go`, retenção de 30 dias | 7 dólares | Sim |
@@ -44,9 +44,9 @@ Em um projeto real, eu trataria esse dimensionamento como ponto de partida e o r
 | `Azure DNS` | Zona pública | 1 dólar | Não se aplica |
 | `Azure OpenAI` | Cobrança por token | Entre 10 e 30 dólares | Sim |
 
-**Total aproximado em East US:** entre **106 e 126 dólares** por mês.
+**Total aproximado em East US:** entre **105 e 125 dólares** por mês.
 
-**Total aproximado em Brazil South** (considerando um acréscimo de 30%): entre **138 e 164 dólares** por mês.
+**Total aproximado em Brazil South** (considerando um acréscimo de 30%): entre **137 e 163 dólares** por mês.
 
 ## Justificativa das escolhas
 
@@ -84,7 +84,7 @@ Escolheria a SKU `Balanced B0`, que corresponde a **1 GB**, sem alta disponibili
 
 A opção sem alta disponibilidade reduz o custo pela **metade** e é indicada pela própria Microsoft para ambientes de desenvolvimento e testes. Em um ambiente de homologação, a perda temporária do cache não causa impacto relevante, já que os dados podem ser recarregados a partir do banco.
 
-O enunciado cita "Azure Redis Cache". Optei pelo `Azure Managed Redis` porque os tiers `Basic`, `Standard` e `Premium` do `Azure Cache for Redis` têm descontinuação anunciada para **30 de setembro de 2028**, e a orientação da Microsoft é utilizar o `Azure Managed Redis` para cargas novas. Provisionar hoje um serviço com fim de vida anunciado criaria uma migração conhecida logo no início do projeto.
+O enunciado cita "Azure Redis Cache". Optei pelo `Azure Managed Redis` porque os tiers `Basic`, `Standard` e `Premium` do `Azure Cache for Redis` têm descontinuação anunciada para **setembro de 2028**, e a orientação da Microsoft é usar o `Azure Managed Redis` em projetos novos.
 
 ### Storage Account
 
@@ -110,13 +110,11 @@ Configuraria também um **limite diário de ingestão**. A cobrança é por volu
 
 Este é o item que mais me chamou atenção ao estimar os custos. Os quatro `private endpoints` somam aproximadamente **29 dólares** por mês, o mesmo valor do banco de dados e mais que o dobro do Redis.
 
-Existe uma alternativa sem custo, que seria utilizar `service endpoints` com regras de firewall. Nesse modelo o recurso mantém um endereço público, restrito por lista de IPs permitidos.
-
-Mesmo assim, manteria os `private endpoints`. O propósito de um ambiente de homologação é validar a mesma configuração que irá para produção. Se a topologia de rede for diferente entre os dois ambientes, problemas relacionados a conectividade só apareceriam em produção, que é exatamente o que se busca evitar.
+Existe uma alternativa sem custo, restringindo o acesso por regras de firewall em vez de usar `private endpoint`. Mesmo assim, manteria os `private endpoints`: o propósito de um ambiente de homologação é validar a mesma configuração que irá para produção, e uma topologia de rede diferente entre os dois ambientes só mostraria problemas de conectividade depois, já em produção.
 
 ### Azure OpenAI
 
-A cobrança é por **token consumido**, o que torna a estimativa dependente do volume de uso. O valor apresentado considera apenas testes funcionais.
+A cobrança é por **token consumido**, o que torna a estimativa dependente do volume de uso e do modelo escolhido — o preço por token varia bastante entre os modelos disponíveis. O valor apresentado assume um modelo custo-efetivo como o `GPT-4o mini`, considerando apenas testes funcionais.
 
 Para evitar surpresas, configuraria um limite de **tokens por minuto** na implantação do modelo e um **alerta de orçamento** no grupo de recursos.
 
@@ -126,9 +124,9 @@ Para evitar surpresas, configuraria um limite de **tokens por minuto** na implan
 
 | Recurso | Como cresce | Configuração que eu adotaria |
 |---------|-------------|------------------------------|
-| `Container App` da API | Escala pelo número de requisições simultâneas | Entre 0 e 5 réplicas, com 50 requisições por réplica |
+| `Container App` da API | Escala pelo número de requisições simultâneas | Entre 0 e 5 réplicas, com 50 requisições por réplica como ponto de partida |
 | `Container App` do front-end | Escala pelo número de requisições simultâneas | Entre 0 e 3 réplicas |
-| `Container App` do Worker | Escala pela quantidade de mensagens na fila | Entre 0 e 5 réplicas, uma réplica a cada 20 mensagens |
+| `Container App` do Worker | Escala pela quantidade de mensagens na fila | Entre 0 e 5 réplicas, uma réplica a cada 20 mensagens como ponto de partida |
 | `Storage Account` | Capacidade elástica por natureza | Sem limite a configurar |
 | `Log Analytics` | Ingestão elástica | Limite diário definido |
 | `Key Vault` e `Azure OpenAI` | Cobrança por uso | Alerta de orçamento configurado |
@@ -141,7 +139,7 @@ Para evitar surpresas, configuraria um limite de **tokens por minuto** na implan
 | `Azure Managed Redis` | Alteração da SKU, por exemplo de `B0` para `B1` |
 | `Azure Container Registry` | Alteração do tier, caso a capacidade de download simultâneo passe a limitar as publicações |
 
-Nesses três casos, os alertas configurados na parte de observabilidade serviriam como indicativo de quando o aumento seria necessário. O alerta de `DTU` do banco acima de **80%**, por exemplo, é o sinal de que o `S1` está próximo do limite.
+Nesses três casos, os alertas configurados na parte de observabilidade serviriam como indicativo de quando o aumento seria necessário — por exemplo, um alerta de `DTU` do banco acima de 80% sinalizando que o `S1` está próximo do limite. Esses limiares são pontos de partida razoáveis, a ajustar com o consumo observado.
 
 ### Observação sobre o `scale to zero`
 
@@ -166,26 +164,7 @@ Uma prática adicional que consideraria é desligar o ambiente fora do horário 
 
 ## Fontes e método de cálculo
 
-### Como cheguei aos valores
-
-Os números apresentados vêm de duas origens distintas, e considero importante separá-las:
-
-**Tarifas oficiais**, consultadas nas páginas de preço da `Azure` em agosto de 2026:
-
-| Serviço | Tarifa de referência |
-|---------|----------------------|
-| `Container Apps` (`Consumption`) | 0,000024 dólar por `vCPU`-segundo e 0,000003 dólar por `GiB`-segundo, com 180.000 `vCPU`-segundos, 360.000 `GiB`-segundos e 2 milhões de requisições gratuitos por mês |
-| `Log Analytics` | 2,30 dólares por GB, após 5 GB gratuitos por mês |
-| `Container Registry Basic` | 0,167 dólar por dia, com 10 GB inclusos |
-| `Azure SQL Standard` | `S0` a 0,0202 dólar por hora e `S2` a 0,0805 dólar por hora |
-
-**Totais mensais calculados**, aplicando essas tarifas às premissas de uso descritas no início deste documento. Os valores da coluna de custo mensal são resultado desse cálculo, e **não preços publicados**.
-
-Um exemplo de como cheguei ao valor do `Container Apps`: considerando as três aplicações ativas dentro da janela de uso assumida, o consumo estimado fica pouco acima da cota gratuita mensal, resultando em aproximadamente **8 dólares**. Com um padrão de uso diferente, esse número mudaria bastante.
-
-O valor da SKU `S1` do banco foi estimado por **interpolação** entre o `S0` e o `S2`, que são as duas referências que consultei diretamente.
-
-### Páginas de referência
+Os valores foram calculados a partir das tarifas oficiais de cada serviço, disponíveis nas páginas de preço abaixo, aplicadas às premissas de uso descritas no início do documento. São valores aproximados, não uma cotação.
 
 | Serviço | Endereço |
 |---------|----------|
@@ -200,11 +179,7 @@ O valor da SKU `S1` do banco foi estimado por **interpolação** entre o `S0` e 
 | `Azure OpenAI` | https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/ |
 | Calculadora de preços | https://azure.microsoft.com/pricing/calculator/ |
 
-### Ressalvas sobre os preços
-
-Os preços da `Azure` mudam com frequência e variam por região. Todas as tarifas acima são da região `East US`, escolhida por ser a referência mais comum nas páginas de preço.
-
-Para um orçamento real, eu montaria a estimativa diretamente na calculadora de preços da `Azure`, selecionando a região definitiva e o compromisso de uso aplicável. O objetivo deste documento é **dimensionar a arquitetura** e apresentar a **ordem de grandeza** do custo, não produzir uma cotação.
+Os preços da `Azure` mudam com frequência e variam por região. Todas as tarifas acima são da região `East US`, escolhida por ser a referência mais comum nas páginas de preço. Para um orçamento real, eu montaria a estimativa diretamente na calculadora de preços da `Azure`, com a região definitiva e o compromisso de uso aplicável.
 
 ## Limitações desta estimativa
 

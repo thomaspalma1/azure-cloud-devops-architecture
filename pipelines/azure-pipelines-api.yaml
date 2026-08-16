@@ -1,4 +1,4 @@
-name: $(Date:yyyyMMdd)$(Rev:.r)
+name: api-$(Date:yyyyMMdd)$(Rev:.r)
 
 trigger:
   branches:

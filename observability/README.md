@@ -27,7 +27,7 @@ Para consultar os logs utilizaria `KQL`, a linguagem de consulta do `Azure Monit
 
 ### Por que eu escolheria
 
-O `Log Analytics` é o destino nativo de logs de praticamente todos os serviços do Azure. Usar outra solução exigiria exportar os dados para fora da plataforma, o que adicionaria um componente de coleta a manter sem trazer benefício.
+O `Log Analytics` é o destino nativo de logs dos serviços que usei neste cenário (`Container Apps`, `SQL Database`, `Key Vault`, `Storage Account`, `Container Registry`). Usar outra solução exigiria exportar os dados para fora da plataforma, o que adicionaria um componente de coleta a manter sem trazer benefício.
 
 Manteria **um único workspace** compartilhado pelos três componentes, em vez de um por aplicação. Isso permite correlacionar em uma mesma consulta um erro da API com o comportamento do `Worker` no mesmo intervalo de tempo, algo que ficaria inviável com repositórios separados.
 
@@ -48,7 +48,7 @@ O papel do `Log Analytics` é o mesmo que o `Loki` cumpre em uma stack `Grafana`
 
 Acompanharia dois níveis de métricas:
 
-* **Infraestrutura:** número de réplicas ativas dos `Container Apps`, consumo de CPU e memória, `DTU` do `Azure SQL`, uso de memória do `Redis` e profundidade da fila do `Storage Queue`.
+* **Infraestrutura:** número de réplicas ativas dos `Container Apps`, consumo de CPU e memória, `DTU` do `SQL Database`, uso de memória do `Redis` e profundidade da fila do `Storage Queue`.
 
 * **Aplicação:** tempo de resposta por endpoint, taxa de falhas e volume de requisições, coletados pelo `Application Insights`.
 
@@ -77,7 +77,7 @@ Criaria dois workbooks:
 
 * **Visão geral da aplicação:** requisições por minuto, tempo médio de resposta, taxa de erro e número de réplicas ativas de cada componente.
 
-* **Visão de infraestrutura:** `DTU` do SQL, memória do `Redis`, profundidade da fila e volume de logs ingeridos.
+* **Visão de infraestrutura:** `DTU` do `SQL Database`, memória do `Redis`, profundidade da fila e volume de logs ingeridos.
 
 Os workbooks combinam consultas `KQL` e gráficos de métricas no mesmo painel, o que permite colocar lado a lado um gráfico de erros e a consulta que lista as exceções daquele período.
 
@@ -116,7 +116,7 @@ O ganho concreto no cenário está no fluxo assíncrono: a API publica uma mensa
 
 ### Relação com ferramentas conhecidas
 
-A função equivale à do `Jaeger` ou do `Tempo` em uma stack open source. A diferença prática mais relevante é que o `Application Insights` instrumenta automaticamente chamadas HTTP, acessos a banco de dados e operações de fila, sem exigir instrumentação manual no código. Com `Jaeger`, seria necessário configurar a propagação de contexto explicitamente.
+A função equivale à do `Jaeger` em uma stack open source. A diferença prática mais relevante é que o `Application Insights` instrumenta automaticamente chamadas HTTP, acessos a banco de dados e operações de fila, sem exigir instrumentação manual no código.
 
 ## Análise de exceções
 
@@ -188,7 +188,7 @@ Os serviços escolhidos cobrem etapas diferentes da investigação de um problem
 
 * **Os logs completam a investigação.** Trazem o detalhe que a telemetria estruturada não captura.
 
-Um exemplo do fluxo no cenário do teste: o alerta de taxa de erro da API dispara. No dashboard, fica visível que a DTU do SQL subiu no mesmo período. O rastreamento distribuído mostra que as requisições estão lentas na chamada ao banco. A análise de exceções identifica exceções de timeout de conexão. Os logs do SQL confirmam o esgotamento de recursos.
+Um exemplo do fluxo no cenário do teste: o alerta de taxa de erro da API dispara. No dashboard, fica visível que a DTU do `SQL Database` subiu no mesmo período. O rastreamento distribuído mostra que as requisições estão lentas na chamada ao banco. A análise de exceções identifica exceções de timeout de conexão. Os logs do `SQL Database` confirmam o esgotamento de recursos.
 
 A observação relevante é que esse encadeamento acontece **sem trocar de ferramenta**. Todos os dados estão no mesmo `Log Analytics Workspace`, o que permite consultá-los em conjunto.
 

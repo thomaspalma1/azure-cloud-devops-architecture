@@ -2,7 +2,7 @@
 
 Corresponde à **Parte 2** do teste técnico.
 
-Este documento apresenta as `SKUs` que eu escolheria para cada recurso, a justificativa técnica de cada escolha, uma estimativa de **custo mensal** e quais recursos poderiam **crescer automaticamente** conforme a demanda.
+Este documento apresenta as `SKUs` (sigla em inglês para *Stock Keeping Unit*, o termo que a `Azure` usa para identificar a variante ou o tier de cada recurso) que eu escolheria para cada recurso, a justificativa técnica de cada escolha, uma estimativa de **custo mensal** e quais recursos poderiam **crescer automaticamente** conforme a demanda.
 
 ## Sobre as estimativas
 
@@ -66,9 +66,9 @@ Distribuiria os recursos assim:
 
 Escolheria o tier `Basic`, que inclui **10 GB** de armazenamento. Como são apenas três imagens com poucas publicações diárias, esse espaço seria suficiente.
 
-Os tiers `Standard` e `Premium` se justificam quando há necessidade de maior capacidade de download simultâneo ou replicação geográfica, o que não se aplica a um ambiente de homologação.
+Os tiers `Standard` e `Premium` se justificam quando há necessidade de maior capacidade de download simultâneo, o que não se aplica a um ambiente de homologação.
 
-Vale registrar uma limitação dessa escolha: o `Private Link` com `private endpoint` só está disponível no tier `Premium`, que custa aproximadamente 50 dólares por mês, **dez vezes mais** que o `Basic`. Por isso, o registry ficaria com acesso público, protegido por autenticação via `Managed Identity` e permissão de `RBAC`. Como ele não armazena dados de negócio, considero uma **exceção aceitável**.
+Uma limitação dessa escolha: `private endpoint` só está disponível no tier `Premium`, cerca de **dez vezes mais caro** que o `Basic`. Por isso, o registry ficaria com acesso público, protegido por `Managed Identity` e `RBAC`. Como ele não armazena dados de negócio, considero uma **exceção aceitável**.
 
 ### Azure SQL Database
 
@@ -179,7 +179,7 @@ Os números apresentados vêm de duas origens distintas, e considero importante 
 | `Container Registry Basic` | 0,167 dólar por dia, com 10 GB inclusos |
 | `Azure SQL Standard` | `S0` a 0,0202 dólar por hora e `S2` a 0,0805 dólar por hora |
 
-**Totais mensais calculados por mim**, aplicando essas tarifas às premissas de uso descritas no início deste documento. Os valores da coluna de custo mensal são resultado desse cálculo, e **não preços publicados**.
+**Totais mensais calculados**, aplicando essas tarifas às premissas de uso descritas no início deste documento. Os valores da coluna de custo mensal são resultado desse cálculo, e **não preços publicados**.
 
 Um exemplo de como cheguei ao valor do `Container Apps`: considerando as três aplicações ativas dentro da janela de uso assumida, o consumo estimado fica pouco acima da cota gratuita mensal, resultando em aproximadamente **8 dólares**. Com um padrão de uso diferente, esse número mudaria bastante.
 

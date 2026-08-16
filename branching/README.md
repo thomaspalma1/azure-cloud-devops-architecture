@@ -86,6 +86,13 @@ Configuraria os `Pull Requests` da seguinte forma:
 
 Manteria a configuração igual para `main` e `develop`. Considero que código não revisado não deve entrar em `develop`, porque ele será promovido para `main` mais adiante. Aplicar o mesmo nível de proteção nas duas branches evita esse problema na origem.
 
+### Estratégia de merge
+
+Também definiria como cada `Pull Request` seria concluído, porque isso muda o histórico do repositório:
+
+* **`feature` → `develop`**: usaria a opção de mesclagem que reúne todos os commits da branch em um único commit no destino. Uma `feature` costuma acumular commits intermediários (ajustes, correções de digitação, retrabalho), e reunir tudo em um só commit mantém o histórico de `develop` legível, com uma linha por funcionalidade entregue.
+* **`release` / `hotfix` → `main`**: usaria a mesclagem completa, preservando cada commit individual. Como `main` representa produção, é importante conseguir enxergar exatamente qual conjunto de commits foi publicado em cada versão.
+
 ## Validação de build
 
 A validação de build é a `policy` que conecta a estratégia de branches às `pipelines`. Com ela, nenhum código entraria em `main` ou `develop` sem que o build e os testes tivessem passado.
@@ -94,7 +101,7 @@ A validação de build é a `policy` que conecta a estratégia de branches às `
 
 Ao abrir um `Pull Request`, o `Azure DevOps` dispara automaticamente a `pipeline` configurada como `Build Validation`. O botão de conclusão do `Pull Request` fica bloqueado até o resultado ser aprovado.
 
-Esse comportamento vem do gatilho declarado no topo de cada `pipeline`:
+Esse comportamento vem do gatilho `pr`, declarado no topo de cada `pipeline`:
 
 ```yaml
 pr:
@@ -102,10 +109,24 @@ pr:
     include:
       - develop
       - main
+      - release/*
 ```
 
 > [!IMPORTANT]
-> O `Pull Request` só pode ser concluído se a `pipeline` de `Build Validation` passar. Isso garante que nenhum código quebrado chegue a `develop` ou `main`.
+> O `Pull Request` só pode ser concluído se a `pipeline` de `Build Validation` passar. Isso garante que nenhum código quebrado chegue a `develop`, `main` ou `release`.
+
+Cada `pipeline` também declara um gatilho `trigger` separado, para as mesmas branches, que dispara a execução após o merge:
+
+```yaml
+trigger:
+  branches:
+    include:
+      - develop
+      - main
+      - release/*
+```
+
+É essa segunda execução, já fora do contexto do `Pull Request`, que segue para as `stages` de `Build` e `Deploy` descritas no [fluxo completo do processo](#fluxo-completo-do-processo).
 
 ### O que seria executado na validação
 
@@ -131,13 +152,15 @@ Durante um `Pull Request`, a `pipeline` **não** construiria imagem `Docker`, **
 Esse controle viria da condição aplicada à `stage` de `deploy`:
 
 ```yaml
-condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')))
 ```
 
-Durante um `Pull Request`, a variável `Build.SourceBranch` recebe o valor `refs/pull/N/merge`, e não `refs/heads/develop`. A condição fica falsa e somente a `stage` de build é executada.
+Durante um `Pull Request`, a variável `Build.SourceBranch` recebe o valor `refs/pull/N/merge`, que não corresponde a `refs/heads/develop` nem começa com `refs/heads/release/`. A condição fica falsa e somente a `stage` de build é executada.
+
+A condição aceita tanto `develop` quanto `release/*` porque as duas publicam automaticamente em homologação, conforme a tabela de [relação entre branches e ambientes](#relação-entre-branches-e-ambientes). Já `main` fica de fora porque as `stages` de `deploy` em produção não foram implementadas (ver [observação sobre o escopo](#observação-sobre-o-escopo)).
 
 > [!TIP]
-> Um `Pull Request` pode ser atualizado várias vezes durante a revisão, e publicar uma imagem a cada atualização encheria o `registry` de artefatos descartáveis. Além disso, o `Azure Container Registry` no tier `Basic` possui apenas **10 GiB** inclusos — mais um motivo para restringir o `deploy` à branch `develop`.
+> Um `Pull Request` pode ser atualizado várias vezes durante a revisão, e publicar uma imagem a cada atualização encheria o `registry` de artefatos descartáveis. Além disso, o `Azure Container Registry` no tier `Basic` possui apenas **10 GiB** inclusos, mais um motivo para restringir o `deploy` à branch `develop`.
 
 ## Branch Policies
 
@@ -159,6 +182,23 @@ Configuraria as `policies` no `Azure DevOps` em **Repos**, **Branches**, **Branc
   * `Pipeline` do componente, obrigatória
 
 ### Policies aplicadas em `develop`
+
+* Require a minimum number of reviewers
+  * Mínimo de **dois** revisores
+  * Autor não pode aprovar o próprio `Pull Request`
+
+* Check for linked work items
+  * Obrigatório
+
+* Check for comment resolution
+  * Obrigatório
+
+* Build Validation
+  * `Pipeline` do componente, obrigatória
+
+### Policies aplicadas em `release`
+
+A branch `release` também faz merge em `main`, então manteria exatamente as mesmas regras:
 
 * Require a minimum number of reviewers
   * Mínimo de **dois** revisores
@@ -267,7 +307,7 @@ Este seria o caminho que uma alteração percorreria no projeto:
 | Branch para Pull Request | A `branch policy` impede push direto, então o `Pull Request` é o único caminho |
 | Pull Request para validação de build | O gatilho `pr` dispara a `pipeline` e o merge fica bloqueado até a aprovação |
 | Validação de build para build | É a mesma `stage` de build, executada no contexto do `Pull Request` |
-| Build para deploy | A `stage` de `deploy` depende da `stage` de build e está restrita à branch `develop` |
+| Build para deploy | A `stage` de `deploy` depende da `stage` de build e está restrita às branches `develop` e `release` |
 | Deploy para smoke test | O `smoke test` consulta o endereço da aplicação recém atualizada |
 | Smoke test para rollback | A tarefa de `rollback` possui condição de execução em caso de falha |
 
@@ -289,8 +329,9 @@ Correções urgentes em produção **não** passariam por `develop`. O fluxo ser
   * Criaria a partir de `main` porque a correção precisa partir exatamente do código que está em produção. Se fosse criada a partir de `develop`, levaria junto funcionalidades que ainda não foram homologadas.
 
 * **Aplicar a correção e abrir Pull Request para `main`**
-  * As mesmas `policies` continuariam válidas
-  * Urgência não dispensa revisão nem validação de build
+  * As mesmas `policies` continuariam válidas por padrão
+  * Urgência não dispensa validação de build: o código sempre passaria pela `pipeline` antes do merge
+  * Para um incidente realmente crítico, permitiria uma exceção na exigência de duas aprovações: o `Pull Request` poderia ser concluído com **uma aprovação**, desde que a segunda revisão fosse feita depois, já com a correção em produção, e registrada no próprio `Pull Request`
 
 * **Concluir o merge em `main`**
   * A `pipeline` publica a correção em produção
@@ -302,6 +343,9 @@ Correções urgentes em produção **não** passariam por `develop`. O fluxo ser
 
 * **Remover a branch de hotfix**
   * Removeria apenas após os dois merges
+
+> [!IMPORTANT]
+> A exceção de aprovação única seria só para incidentes críticos em produção, e nunca dispensaria a validação de build. A segunda revisão aconteceria depois, mas ficaria registrada no `Pull Request`, a urgência justifica adiar a aprovação, não eliminá-la.
 
 > [!CAUTION]
 > Esquecer o `Pull Request` de `hotfix` para `develop` faz o defeito **reaparecer** no próximo `release`, porque a correção nunca chega à linha de desenvolvimento.
@@ -316,6 +360,6 @@ Correções urgentes em produção **não** passariam por `develop`. O fluxo ser
 
 ## Observação sobre o escopo
 
-O enunciado define como objetivo disponibilizar o **ambiente de homologação**. Por esse motivo, as `pipelines` implementam o `deploy` automático a partir da branch `develop`.
+O enunciado define como objetivo disponibilizar o **ambiente de homologação**. Por esse motivo, as `pipelines` implementam o `deploy` automático a partir das branches `develop` e `release`.
 
 A estratégia de branches descrita neste documento já contempla `main` como caminho para produção, porém as `stages` de `deploy` em produção **não foram implementadas**, por estarem fora do escopo solicitado.

@@ -5,12 +5,14 @@ trigger:
     include:
       - develop
       - main
+      - release/*
 
 pr:
   branches:
     include:
       - develop
       - main
+      - release/*
 
 pool:
   vmImage: ubuntu-latest
@@ -59,7 +61,7 @@ stages:
   - stage: Deploy
     displayName: Deploy em homologacao
     dependsOn: Build
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')))
     jobs:
       - job: Deploy
         steps:

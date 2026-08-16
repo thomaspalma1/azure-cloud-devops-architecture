@@ -6,13 +6,9 @@ O enunciado indica que a empresa pretende utilizar o `Azure AI Foundry` para int
 
 ## Observação sobre esta proposta
 
-Considero importante ser **transparente** quanto ao meu nível de conhecimento neste tema.
+**Não tenho experiência profissional** com integração de Inteligência Artificial, nem com o `Azure AI Foundry` especificamente. A proposta a seguir vem de pesquisa na documentação oficial da Microsoft e em materiais técnicos sobre o assunto, não de uma implementação que eu tenha conduzido.
 
-**Não tenho experiência profissional** com integração de Inteligência Artificial, nem com o `Azure AI Foundry` especificamente. O que apresento aqui é fruto de pesquisa na documentação oficial da Microsoft e em materiais técnicos sobre o assunto, não de uma implementação que eu tenha conduzido na prática.
-
-Por esse motivo, mantive a proposta **deliberadamente simples**. Existem diferentes formas de estruturar uma solução com IA, e não apresento esta como a única correta ou a mais adequada. Ela representa o que eu proporia como ponto de partida para o cenário do teste, com a expectativa de refiná-la conforme o time definisse os requisitos reais de uso.
-
-Onde identifiquei decisões que exigiriam mais conhecimento do que possuo hoje, registrei isso **explicitamente** ao longo do documento.
+Por esse motivo, mantive as decisões **deliberadamente simples**. Não é a única forma de estruturar essa integração, mas é a que eu conseguiria sustentar como ponto de partida, refinando conforme o time definisse os requisitos reais de uso.
 
 ## Entendimento dos serviços
 
@@ -20,7 +16,7 @@ Antes de descrever a arquitetura, registro como entendi a relação entre os ser
 
 * `Azure AI Foundry` é a **plataforma unificada** para construir, testar e publicar aplicações de IA. Sucede o antigo `Azure AI Studio` e organiza os recursos em `Hubs` e `Projects`.
 * `Azure OpenAI` é um dos serviços disponíveis dentro do `Foundry`, e é ele que dá acesso aos modelos `GPT`.
-* Na prática, o `Foundry` é o ambiente onde o modelo é escolhido e implantado, e a aplicação consome esse modelo por meio de um `endpoint` gerado após a implantação.
+* Em resumo, o `Foundry` é o ambiente onde o modelo é escolhido e implantado, e a aplicação consome esse modelo por meio de um `endpoint` gerado após a implantação.
 
 Ou seja, os dois **não são alternativas concorrentes**. O `Foundry` é a camada de plataforma, e o `Azure OpenAI` é o serviço de modelos que ela disponibiliza.
 
@@ -173,4 +169,4 @@ Registro aqui os pontos que eu precisaria aprofundar antes de partir para uma im
 * Boas práticas de tratamento de erro específicas de chamadas a modelos de linguagem, como comportamento diante de limite de requisições atingido
 * Recursos de IA responsável oferecidos pela plataforma, como filtros de conteúdo
 
-Considero que reconhecer esses pontos é parte de propor uma **solução honesta**. Preferi apresentar uma proposta simples que consigo explicar por completo a apresentar uma arquitetura mais elaborada que eu não saberia sustentar.
+A proposta reflete o que consegui entender pesquisando sobre o assunto até aqui, e seria esse o ponto de partida para evoluir junto com o time.

@@ -57,6 +57,7 @@ Isso é um contrato entre a imagem e a infraestrutura: **a aplicação precisa e
 | `-p:PublishReadyToRun=true`                   | Pré-compila o código, o que aumenta a imagem em alguns MB mas reduz o tempo de inicialização. Vale a troca porque as réplicas escalam a zero e sobem com frequência (`min_replicas = 0`, ver [`sizing/`](../../sizing/README.md)) |
 | `-p:Version=${VERSION}`                       | Versão do assembly recebida da pipeline por `--build-arg`, para saber qual build gerou a imagem em execução                                        |
 | `ENV ASPNETCORE_HTTP_PORTS=8080`              | Porta não privilegiada: um processo não-root não consegue fazer bind abaixo de 1024                                                                |
+| `EXPOSE 8080`                                 | Documenta a porta que o container escuta. Não publica nada por si só, mas precisa coincidir com o `target_port` do ingress no Terraform            |
 | `COPY --chown=$APP_UID:$APP_UID`              | Os arquivos já entram com o dono correto, evitando um `RUN chown` que criaria mais uma camada com o conteúdo duplicado                             |
 | `USER $APP_UID`                               | Executa como usuário sem privilégios. `$APP_UID` é definido pelas imagens base oficiais do .NET, então usar a variável evita fixar o número no arquivo |
 | `ENTRYPOINT ["dotnet", "Api.dll"]`            | Forma *exec* (não *shell*): o processo roda como PID 1 e recebe `SIGTERM` diretamente, o que permite encerrar de forma limpa quando o Container Apps reduz réplicas |

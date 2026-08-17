@@ -22,7 +22,7 @@ Cada subdiretório tem um `README.md` próprio com as decisões daquele componen
 
 **Cada Dockerfile pertence ao repositório da aplicação que ele empacota, não a um repositório central de infraestrutura.**
 
-No cenário original há quatro repositórios no Azure DevOps (`api`, `web`, `worker`, `infrastructure`). O Dockerfile depende diretamente da estrutura interna do projeto: caminho do `.csproj`, nome do assembly, diretório de saída do build. Se alguém renomeia `src/Api` para `src/Api.Host`, o Dockerfile quebra.
+No cenário original há quatro repositórios no Azure DevOps (`api`, `web`, `worker`, `infrastructure`). O Dockerfile depende diretamente da estrutura interna do projeto: caminho do `.csproj`, nome do binário gerado, diretório de saída do build. Se alguém renomeia `src/Api` para `src/Api.Host`, o Dockerfile quebra.
 
 Mantendo-o no mesmo repositório, a alteração de estrutura e a correção do Dockerfile acontecem **no mesmo Pull Request, sob a mesma revisão**. Se o Dockerfile vivesse em `infrastructure`, seriam dois Pull Requests em repositórios diferentes que precisam ser mesclados em ordem, e o build fica quebrado no intervalo.
 
@@ -43,7 +43,7 @@ A configuração é resolvida em quatro camadas, com uma regra que atravessa tod
 
 Os valores de `ARG` ficam registrados no histórico da imagem e são recuperáveis com `docker history`, sem precisar executar o container. Os de `ENV` continuam definidos no processo em execução e aparecem em qualquer inspeção da imagem. Em ambos os casos, quem tiver permissão de *pull* no registry recupera o valor, e apagá-lo em uma camada posterior não resolve, porque a camada anterior permanece.
 
-Por isso as duas camadas de build carregam apenas o que é público por natureza: versão da imagem base, configuração de compilação, nome do assembly, porta de escuta.
+Por isso as duas camadas de build carregam apenas o que é público por natureza: versão da imagem base, configuração de compilação, nome da aplicação, porta de escuta.
 
 ### Como o segredo chega à aplicação
 

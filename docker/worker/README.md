@@ -55,7 +55,7 @@ docker build -f docker/worker/Dockerfile \
   -t acracdahomolog.azurecr.io/worker:1.0.0 .
 ```
 
-Assim como na API, o build context é a **raiz do repositório `worker`**, e a pipeline passa a versão do assembly por `--build-arg VERSION`.
+Assim como na API, o build context é a **raiz do repositório `worker`**, e a pipeline passa a versão da aplicação por `--build-arg VERSION`.
 
 ## `worker/.dockerignore`
 

@@ -55,7 +55,7 @@ Isso é um contrato entre a imagem e a infraestrutura: **a aplicação precisa e
 | `--runtime linux-x64` no restore e no publish | Restaura e publica para o mesmo runtime, o que permite usar `--no-restore` no publish sem refazer o trabalho                                       |
 | `--self-contained false`                      | A imagem base já contém o runtime .NET; empacotá-lo de novo duplicaria dezenas de MB                                                               |
 | `-p:PublishReadyToRun=true`                   | Pré-compila o código, o que aumenta a imagem em alguns MB mas reduz o tempo de inicialização. Vale a troca porque as réplicas escalam a zero e sobem com frequência (`min_replicas = 0`, ver [`sizing/`](../../sizing/README.md)) |
-| `-p:Version=${VERSION}`                       | Versão do assembly recebida da pipeline por `--build-arg`, para saber qual build gerou a imagem em execução                                        |
+| `-p:Version=${VERSION}`                       | Versão da aplicação recebida da pipeline por `--build-arg`, para saber qual build gerou a imagem em execução                                       |
 | `ENV ASPNETCORE_HTTP_PORTS=8080`              | Porta não privilegiada: um processo não-root não consegue fazer bind abaixo de 1024                                                                |
 | `EXPOSE 8080`                                 | Documenta a porta que o container escuta. Não publica nada por si só, mas precisa coincidir com o `target_port` do ingress no Terraform            |
 | `COPY --chown=$APP_UID:$APP_UID`              | Os arquivos já entram com o dono correto, evitando um `RUN chown` que criaria mais uma camada com o conteúdo duplicado                             |
@@ -72,7 +72,7 @@ docker build -f docker/api/Dockerfile \
 
 O build context é a **raiz do repositório `api`**, não o diretório `docker/api/`, por isso o `.` no final e o `-f` apontando para o caminho do Dockerfile. Os caminhos dentro do arquivo (`src/Api/...`) são relativos a essa raiz.
 
-Na pipeline, o build é feito pela task `Docker@2` em modo `buildAndPush`, que também publica no Azure Container Registry (ver [`pipelines/`](../../pipelines/README.md)). A versão é passada como `1.0.0-$(Build.BuildNumber)`: `1.0.0` é a versão base do produto e o número do build entra como sufixo, de modo que a imagem e o assembly apontem para a mesma execução da pipeline.
+Na pipeline, o build é feito pela task `Docker@2` em modo `buildAndPush`, que também publica no Azure Container Registry (ver [`pipelines/`](../../pipelines/README.md)). A versão é passada como `1.0.0-$(Build.BuildNumber)`: `1.0.0` é a versão base do produto e o número do build entra como sufixo, de modo que a imagem e a aplicação que ela contém apontem para a mesma execução da pipeline.
 
 ## `api/.dockerignore`
 

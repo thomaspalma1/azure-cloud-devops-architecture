@@ -45,7 +45,7 @@ docker build --build-arg BUILD_CONFIGURATION=homolog ...
 
 > **Trade-off assumido:** resolver a configuração em build time significa que **cada ambiente gera uma imagem distinta**, a imagem validada em homologação não é o mesmo artefato binário promovido para produção. Para um ambiente de homologação essa é uma troca aceitável, e mantém a solução simples e legível.
 >
-> Em um cenário onde a paridade de artefato entre ambientes seja requisito rígido, a alternativa seria injetar a configuração em runtime, por exemplo gerando um `assets/env.js` no entrypoint do container a partir de variáveis de ambiente, permitindo que a mesma imagem rode em qualquer ambiente. O custo seria um script adicional a manter e configuração não tipada (`window.__env` chega como `any`).
+> Em um cenário onde a paridade de artefato entre ambientes seja requisito rígido, a alternativa seria injetar a configuração em runtime, por exemplo gerando um `assets/env.js` no entrypoint do container a partir de variáveis de ambiente, permitindo que a mesma imagem rode em qualquer ambiente. O custo seria um script a mais para manter.
 >
 > Note que essa questão **não existe no backend**: API e Worker leem configuração em runtime a partir de variáveis de ambiente injetadas pelo Container Apps. A restrição é específica de aplicações front-end compiladas, e o quadro completo está em [Gerenciamento de variáveis de ambiente](../README.md#gerenciamento-de-variáveis-de-ambiente).
 
@@ -57,7 +57,7 @@ Esta é a principal decisão de segurança deste arquivo.
 
 A imagem oficial `nginx` **exige root** para iniciar: precisa fazer bind na porta 80 (portas abaixo de 1024 são privilegiadas) e escrever em `/var/run` e `/var/cache/nginx`. Rodar um servidor web exposto à internet como root é exatamente o cenário que se busca evitar.
 
-A alternativa comum é usar a imagem padrão e "consertar" com uma sequência de `RUN chown`, `RUN chmod`, criação de usuário e alteração de diretórios de cache. Isso funciona, mas adiciona camadas, é frágil e quebra a cada atualização da imagem base.
+A alternativa comum é usar a imagem padrão e "consertar" com uma sequência de `RUN chown`, `RUN chmod`, criação de usuário e alteração de diretórios de cache. Isso funciona, mas adiciona camadas e vira manutenção a cada atualização da imagem base.
 
 `nginxinc/nginx-unprivileged` é a variante oficial mantida pela própria NGINX, já configurada para rodar como **UID 101** e escutar em **8080**. Trocar a imagem base resolve o problema na origem, sem remendo.
 
@@ -101,7 +101,7 @@ Mesma finalidade do [`.dockerignore` da API](../api/README.md#apidockerignore): 
 
 | Bloco | Motivo |
 |---|---|
-| `node_modules/` | O mais importante dos dois pontos de vista. Além do tamanho, copiá-lo da máquina do desenvolvedor **quebraria o build**: pacotes com binários nativos são compilados para o sistema operacional do host e não rodariam na imagem Alpine. O `npm ci` do estágio `deps` precisa instalar do zero |
+| `node_modules/` | O item mais importante da lista. Além do tamanho, copiá-lo da máquina do desenvolvedor **quebraria o build**: pacotes com binários nativos são compilados para o sistema operacional do host e não rodariam na imagem Alpine. O `npm ci` do estágio `deps` precisa instalar do zero |
 | `dist/`, `.angular/`, `coverage/` | Saída de build, cache do compilador Angular e relatório de cobertura, todos gerados localmente e sem uso dentro do container |
 | `.env`, `.env.*`, `**/*.pem`, `**/*.key` | Mesma barreira contra segredo entrando na imagem, adaptada ao que aparece em um projeto front-end |
 | `**/*.spec.ts` | Testes rodam na pipeline, em etapa anterior ao build da imagem |
@@ -152,8 +152,6 @@ A configuração aplica políticas deliberadamente diferentes por tipo de arquiv
 
 Essa combinação é o que permite deploys sem invalidação manual de cache: o `index.html` é sempre buscado do servidor e aponta para os bundles corretos, enquanto os bundles, imutáveis por definição, permanecem no cache do navegador entre visitas. Sem o `no-store` no `index.html`, uma cópia cacheada apontaria para bundles de um deploy anterior que já não existem, resultando em aplicação quebrada após cada deploy.
 
-O `max-age` é declarado dentro do próprio `add_header`, em vez de usar a diretiva `expires`. As duas fazem a mesma coisa, e usá-las em conjunto produziria um cabeçalho `Cache-Control` duplicado na resposta.
-
 ### Endpoint `/healthz`
 
 ```nginx
@@ -184,7 +182,7 @@ O `return 200` responde diretamente, sem tocar o disco. Um health check que depe
 | `Referrer-Policy: no-referrer` | Evita que URLs internas (potencialmente com identificadores) vazem para sites externos pelo header `Referer` |
 | `Permissions-Policy` | Desabilita explicitamente acesso a geolocalização, microfone e câmera |
 
-O parâmetro `always` garante que os cabeçalhos sejam enviados também em respostas de erro (4xx, 5xx). Sem ele, o nginx os omite nessas respostas, e páginas de erro são justamente um vetor comum de exploração.
+O parâmetro `always` garante que os cabeçalhos sejam enviados também em respostas de erro (4xx, 5xx). Sem ele, o nginx os omite nessas respostas, que são páginas servidas ao navegador como qualquer outra.
 
 #### Por que os cabeçalhos são repetidos em cada `location`
 
@@ -196,7 +194,7 @@ A alternativa seria extrair os cabeçalhos para um `security-headers.conf` e usa
 
 `server_tokens off` permanece no nível `server` porque não é um `add_header`, é uma diretiva própria e é herdada normalmente. Ela remove a versão do nginx do header `Server` e das páginas de erro.
 
-> **O que não está aqui:** `Content-Security-Policy` e `Strict-Transport-Security`. A CSP depende do que a aplicação real carrega (CDNs, fontes externas, scripts inline do Angular) e uma política genérica quebraria a aplicação ou seria permissiva demais para ter valor. O HSTS é desnecessário neste ponto porque o TLS termina no ingress do Container Apps, que já o aplica.
+> **O que não está aqui:** `Content-Security-Policy` e `Strict-Transport-Security`. A CSP depende do que a aplicação real carrega (CDNs, fontes externas, scripts inline do Angular) e uma política genérica quebraria a aplicação ou seria permissiva demais para ter valor. Já o HSTS não faz sentido neste arquivo porque o TLS termina no ingress do Container Apps: o nginx aqui recebe a requisição já sem TLS, então esse cabeçalho pertence à camada do ingress, e é um dos pontos que eu verificaria antes de expor o ambiente.
 
 ### Compressão
 

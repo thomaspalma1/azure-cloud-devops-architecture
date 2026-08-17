@@ -6,9 +6,9 @@ Este documento descreve como eu protegeria cada camada da solução, cobrindo `s
 
 ## Observação sobre esta proposta
 
-Tenho familiaridade com os conceitos apresentados aqui, mas não me considero especialista em segurança em ambientes `Azure`. A proposta reúne o que consegui estruturar a partir do que conheço, complementado por pesquisa na documentação da Microsoft e na internet.
+Tenho familiaridade com os conceitos apresentados aqui, mas **não me considero especialista em segurança** em ambientes `Azure`. A proposta reúne o que consegui estruturar a partir do que conheço, complementado por pesquisa na documentação da Microsoft e na internet.
 
-Mantive a abordagem deliberadamente simples. O teste apresenta um cenário hipotético e não informa o tamanho do ambiente, então evitei propor controles que fariam sentido apenas em organizações grandes ou em contextos com exigência regulatória específica.
+**Mantive a abordagem deliberadamente simples.** O teste apresenta um cenário hipotético e não informa o tamanho do ambiente, então evitei propor controles que fariam sentido apenas em organizações grandes ou em contextos com exigência regulatória específica.
 
 A maior parte das decisões descritas abaixo **já está implementada** nos módulos `Terraform` e nos `Dockerfiles` deste repositório. Onde a proposta ainda não foi implementada, registro isso de forma explícita.
 
@@ -22,7 +22,7 @@ Onde não foi possível eliminar o segredo, ele fica no `Key Vault` e é lido em
 
 ## Secrets
 
-### Como eu protegeria
+### Como eu protegeria os secrets
 
 Armazenaria todos os segredos no `Azure Key Vault`, com as seguintes configurações:
 
@@ -33,19 +33,19 @@ Armazenaria todos os segredos no `Azure Key Vault`, com as seguintes configuraç
 
 As aplicações **não recebem os segredos** em arquivo de configuração nem em variável de ambiente com valor fixo. O `Container Apps` referencia o segredo no `Key Vault` e o resolve na inicialização do container.
 
-### Por que essa escolha
+### Por que RBAC em vez de access policies
 
 Utilizaria `RBAC` em vez de `access policies` porque as `access policies` formam uma lista de permissões dentro do próprio recurso, **invisível para quem audita** os acessos da assinatura. Com `RBAC`, a permissão sobre o `Key Vault` aparece no mesmo lugar que todas as outras permissões do ambiente.
 
 Desabilitar o acesso público é coerente com a existência do `private endpoint`. Manter o endereço público aberto tendo um `private endpoint` configurado seria pagar pelo controle sem obter o benefício.
 
-### Onde já está implementado
+### Onde já está implementado no módulo key-vault
 
 No módulo `key-vault` do `Terraform`, com `rbac_authorization_enabled` ativado, `public_network_access_enabled` desabilitado e regra de rede que nega acesso por padrão.
 
 ## Strings de conexão
 
-### Como eu protegeria
+### Como eu protegeria as connection strings
 
 Este é o ponto em que apliquei o princípio de **eliminar o segredo** em vez de protegê-lo.
 
@@ -60,19 +60,19 @@ Este é o ponto em que apliquei o princípio de **eliminar o segredo** em vez de
   * Armazenaria o endereço de conexão no `Key Vault`
   * O acesso pela rede é restrito ao `private endpoint`
 
-### Por que essa escolha
+### Por que eliminar a senha em vez de protegê-la
 
 Com autenticação por `Entra ID` no banco e no storage, **não existe senha** para ser rotacionada, auditada ou vazada. Se alguém obtivesse a `connection string` do banco, ela sozinha **não daria acesso a nada**, porque a autenticação depende da identidade de quem faz a chamada.
 
 Reconheço que essa abordagem exige que a aplicação utilize as bibliotecas de autenticação do `Azure`. É uma dependência a mais no código, mas considero uma troca vantajosa em relação a gerenciar senhas.
 
-### Onde já está implementado
+### Onde já está implementado nos módulos sql-database e storage-account
 
 No módulo `sql-database`, com `azuread_authentication_only` habilitado, e no módulo `storage-account`, com `shared_access_key_enabled` desabilitado.
 
 ## Tokens
 
-### Como eu protegeria
+### Como eu protegeria os tokens
 
 * **Tokens de acesso a serviços do `Azure`**
   * Não seriam armazenados. As bibliotecas do `Azure` obtêm o token automaticamente a partir da `Managed Identity` e cuidam da renovação
@@ -83,19 +83,19 @@ No módulo `sql-database`, com `azuread_authentication_only` habilitado, e no m�
 * **Chaves de serviços externos**
   * Ficariam no `Key Vault`, lidas em tempo de execução
 
-### Por que essa escolha
+### Por que delegar a autenticação ao Entra ID
 
 Delegar a autenticação ao `Entra ID` evita que o time implemente e mantenha um mecanismo próprio de autenticação, que é uma área em que erros são fáceis de cometer e **difíceis de perceber**.
 
 Sobre o front-end, é importante registrar que **qualquer valor entregue ao navegador é acessível ao usuário**. Por isso, uma aplicação `Angular` não deve conter `client secret`. Ela obtém o token do usuário e o repassa à API, que faz as chamadas autenticadas.
 
-### Limitação que reconheço
+### Limitação sobre a autenticação dos usuários
 
 O teste não detalha como os usuários se autenticam na aplicação. Assumi o uso do `Entra ID` por ser o provedor natural em um ambiente `Azure` e por já estar presente na solução, mas essa decisão dependeria de como o produto funciona.
 
 ## APIs
 
-### Como eu protegeria
+### Como eu protegeria as APIs
 
 * **Exposição restrita**
   * A API é publicada com `ingress` interno no `Container Apps`, acessível apenas dentro do ambiente
@@ -107,7 +107,7 @@ O teste não detalha como os usuários se autenticam na aplicação. Assumi o us
 * **Acesso a dados**
   * A API acessa banco, cache e storage por `private endpoint`, sem passar pela internet
 
-### Por que essa escolha
+### Por que manter a API com ingress interno
 
 Manter a API com `ingress` interno **reduz bastante a superfície exposta**. Mesmo que houvesse uma falha na autenticação, não seria possível alcançá-la diretamente pela internet.
 
@@ -119,13 +119,13 @@ Se o produto passasse a expor a API para consumo externo, avaliaria o uso do `Az
 
 Para o cenário do teste, em que apenas o front-end consome a API, considero que ele adicionaria custo e um componente a operar **sem benefício claro**.
 
-### Onde já está implementado
+### Onde já está implementado no módulo container-app (ingress)
 
 No módulo `container-app`, com `external_enabled` definido como falso para a API e verdadeiro apenas para o front-end.
 
 ## Containers
 
-### Como eu protegeria
+### Como eu protegeria os containers
 
 * **Execução sem privilégios**
   * Os containers `.NET` rodam com o usuário sem privilégios definido pelas imagens oficiais
@@ -141,27 +141,27 @@ No módulo `container-app`, com `external_enabled` definido como falso para a AP
   * O registry **não possui** usuário administrativo habilitado
   * As aplicações fazem download das imagens usando suas identidades gerenciadas, com permissão apenas de leitura
 
-### Por que essa escolha
+### Por que distroless e registry sem usuário administrativo
 
 As imagens `distroless` reduzem consideravelmente a superfície de ataque. Sem shell e sem gerenciador de pacotes, alguém que conseguisse executar código dentro do container **não encontraria ferramentas para avançar**.
 
-Sobre segredos em argumentos de build, é um ponto que considero pouco conhecido e que vale destacar: os valores de `ARG` e `ENV` **ficam registrados no histórico de camadas** da imagem e podem ser recuperados posteriormente, mesmo que uma camada seguinte os sobrescreva. Passar uma senha como `build arg` equivale a **publicá-la no registry**.
+Sobre segredos em argumentos de build, vale destacar: valores passados como `ARG` ou `ENV` **ficam gravados na imagem final** e podem ser extraídos por qualquer pessoa com acesso a ela. Por isso, nunca passaria uma senha como `build arg`, pois seria o mesmo que **publicá-la no registry**.
 
 Desabilitar o usuário administrativo do registry é importante porque ele é um par de usuário e senha compartilhado, que **não pode ser atribuído a uma pessoa específica** nem rotacionado sem afetar todos que o utilizam.
 
-### Limitação que reconheço
+### Limitação sobre o acesso público do registry
 
-O registry ficou com acesso público, protegido apenas por autenticação e permissão. Isso ocorre porque o `private endpoint` no `Azure Container Registry` só está disponível no tier `Premium`, que custa cerca de **dez vezes mais** que o `Basic`.
+O registry ficou com acesso público, protegido apenas por autenticação e permissão. Isso ocorre porque o `private endpoint` no `Azure Container Registry` só está disponível no tier `Premium`, que **custa bastante mais** que o `Basic`.
 
 Considero uma exceção aceitável para o cenário, já que o registry não armazena dados de negócio, mas registro que em um ambiente com exigência maior essa decisão precisaria ser revista.
 
-### Onde já está implementado
+### Onde já está implementado nos Dockerfiles e no módulo container-registry
 
 Nos `Dockerfiles` do diretório `docker/` e no módulo `container-registry` do `Terraform`.
 
 ## Pipelines
 
-### Como eu protegeria
+### Como eu protegeria as pipelines
 
 * **Autenticação sem senha**
   * Utilizaria a federação de credenciais entre o `Azure DevOps` e o `Entra ID`, para que a pipeline obtenha acesso **sem uma chave armazenada**
@@ -173,19 +173,19 @@ Nos `Dockerfiles` do diretório `docker/` e no módulo `container-registry` do `
   * `Pull Requests` executam apenas build e testes
   * A construção e publicação de imagens acontece **somente após o merge**
 
-### Por que essa escolha
+### Por que federação de credenciais e separar validar de publicar
 
 A federação de credenciais elimina o principal problema do modelo tradicional, em que a pipeline guarda uma chave que precisa ser renovada periodicamente e que, se vazada, dá acesso ao ambiente.
 
 A separação entre validar e publicar tem também um motivo de segurança: durante um `Pull Request`, **o código ainda não foi revisado**. Executar a etapa de publicação nesse momento significaria dar acesso ao registry a código que ninguém aprovou.
 
-### Limitação que reconheço
+### Limitação sobre a configuração da federação de credenciais
 
 A configuração da federação de credenciais é feita na interface do `Azure DevOps`, e não no `Terraform` deste repositório. Não tenho experiência prática com essa configuração específica, mas identifiquei na documentação que ela é a forma recomendada atualmente.
 
 ## Azure DevOps
 
-### Como eu protegeria
+### Como eu protegeria o Azure DevOps
 
 * **Controle de acesso**
   * Os usuários acessam com suas contas do `Entra ID`
@@ -198,13 +198,13 @@ A configuração da federação de credenciais é feita na interface do `Azure D
 * **Rastreabilidade**
   * Cada `Pull Request` é vinculado a um `work item`, permitindo identificar o motivo de cada alteração
 
-### Por que essa escolha
+### Por que grupos e aprovação separada para produção
 
 Atribuir permissões a grupos em vez de pessoas **simplifica bastante a manutenção**: quando alguém entra ou sai do time, basta ajustar o grupo, sem revisar permissões individuais espalhadas.
 
 A aprovação no `Environment` de produção separa duas decisões diferentes. Aprovar o `Pull Request` significa concordar com o código. Aprovar a publicação significa concordar que **aquele é o momento** de colocar no ar. São decisões que nem sempre coincidem.
 
-### Onde já está descrito
+### Onde já está descrito nas branch policies
 
 As configurações de `branch policies` e aprovação de `Environment` estão detalhadas no documento de branching.
 
@@ -236,7 +236,7 @@ Optei por identidades atribuídas pelo usuário, criadas **antes** das aplicaç�
 
 O front-end serve apenas arquivos estáticos, então **não precisa de acesso** a segredos, banco ou storage. Conceder permissões que ele não utiliza aumentaria o impacto de um eventual comprometimento sem trazer benefício.
 
-### Onde já está implementado
+### Onde já está implementado no módulo container-app (identidades)
 
 No módulo `container-app` do `Terraform`, que cria a identidade de cada aplicação e atribui as permissões correspondentes.
 

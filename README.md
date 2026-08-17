@@ -10,7 +10,6 @@
 | Diretório | Conteúdo |
 |---|---|
 | 🏛️ [**Architecture**](./architecture) | Recursos **Azure**, comunicação entre eles, `justificativas técnicas` e redução de custos |
-| 📐 [**Diagrams**](./diagrams) | Diagramas da solução em `Draw.io` e `SVG` |
 | 📊 [**Sizing**](./sizing) | `SKUs`, justificativa técnica, `custo mensal estimado` e `escalabilidade automática` |
 | 🐳 [**Docker**](./docker) | `Dockerfiles`, `multi-stage build`, redução de imagens e `boas práticas de segurança` |
 | 🌿 [**Branching**](./branching) | Estratégia de `branches`, `Pull Requests`, `policies` e versionamento |

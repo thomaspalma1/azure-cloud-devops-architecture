@@ -29,9 +29,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-noble-chiseled AS final
 
 WORKDIR /app
 
-ENV ASPNETCORE_HTTP_PORTS=8080 \
-    DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_EnableDiagnostics=0
+ENV ASPNETCORE_HTTP_PORTS=8080
 
 COPY --from=publish --chown=$APP_UID:$APP_UID /app/publish .
 

@@ -1,0 +1,1 @@
+![ArchitectureStructure](architecture.svg)

@@ -1,0 +1,131 @@
+<mxfile host="app.diagrams.net" agent="drawio">
+  <diagram name="Arquitetura de Homologacao" id="arq-acda-homolog">
+    <mxGraphModel dx="2575" dy="1375" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="titulo" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#243A5E;" value="Arquitetura do ambiente de Homologação" vertex="1">
+          <mxGeometry height="34" width="560" x="60" y="6" as="geometry" />
+        </mxCell>
+        <mxCell id="usuario" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#243A5E;fontColor=#243A5E;fontSize=14;fontStyle=1;" value="Usuário" vertex="1">
+          <mxGeometry height="120" width="180" x="60" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="entra" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505AC9;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" value="Microsoft Entra ID" vertex="1">
+          <mxGeometry height="90" width="220" x="390" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="devops" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" value="Azure DevOps Pipelines&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;integração e entrega contínuas&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="240" x="760" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="rg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FAFD;strokeColor=#8FA9C6;dashed=1;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#243A5E;container=1;collapsible=0;" value="Resource Group: rg-acda-homolog" vertex="1">
+          <mxGeometry height="860" width="1360" x="310" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="acr" parent="rg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" value="Azure Container Registry&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;acracdahomolog&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="240" x="450" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="openai" parent="rg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0E8A6E;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" value="Azure OpenAI Service&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;no Azure AI Foundry&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="190" x="1150" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="mon" parent="rg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7A57D1;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" value="Application Insights e&lt;br&gt;Log Analytics Workspace&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;(Azure Monitor)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="130" width="190" x="1150" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="vnet" parent="rg" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EFF6FC;strokeColor=#0078D4;dashed=1;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontSize=12;fontStyle=1;fontColor=#0B4C8C;container=1;collapsible=0;" value="Azure Virtual Network: vnet-acda-homolog" vertex="1">
+          <mxGeometry height="680" width="1070" x="40" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="subnetApps" parent="vnet" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9AA5B1;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;fontSize=11;fontColor=#5A6773;container=1;collapsible=0;" value="Subnet: snet-container-apps" vertex="1">
+          <mxGeometry height="330" width="990" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cae" parent="subnetApps" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1EFFA;strokeColor=#0078D4;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;fontSize=12;fontStyle=1;fontColor=#0B4C8C;container=1;collapsible=0;" value="Azure Container Apps Environment" vertex="1">
+          <mxGeometry height="270" width="930" x="30" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="web" parent="cae" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Container App: web&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Angular servido por nginx&lt;br&gt;(ingress externo)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="200" x="50" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="cae" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Container App: api&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;API REST em .NET 10&lt;br&gt;(ingress interno)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="200" x="350" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" parent="cae" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Container App: worker&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Background Worker em .NET 10&lt;br&gt;(sem ingress)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="200" x="650" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="subnetPe" parent="vnet" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9AA5B1;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;fontSize=11;fontColor=#5A6773;container=1;collapsible=0;" value="Subnet: snet-private-endpoints (serviços acessados por endpoint privado)" vertex="1">
+          <mxGeometry height="180" width="1010" x="30" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="kv" parent="subnetPe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3C8DBC;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Key Vault" vertex="1">
+          <mxGeometry height="100" width="180" x="70" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" parent="subnetPe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3C8DBC;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Managed Redis" vertex="1">
+          <mxGeometry height="100" width="180" x="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sql" parent="subnetPe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3C8DBC;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure SQL Database" vertex="1">
+          <mxGeometry height="100" width="180" x="530" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="storage" parent="subnetPe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3C8DBC;strokeColor=none;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="Azure Storage Account&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;container uploads,&lt;br&gt;fila worker-jobs&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="180" x="760" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="usuario" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#243A5E;strokeWidth=2;fontSize=10;fontColor=#243A5E;verticalAlign=bottom;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="web" value="HTTPS com certificado gerenciado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0B4C8C;strokeWidth=2;fontSize=10;fontColor=#0B4C8C;verticalAlign=bottom;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="api" value="ingress interno">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0B4C8C;fontSize=10;fontColor=#0B4C8C;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.555;entryY=0;entryDx=0;entryDy=0;" target="redis" value="cache">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0B4C8C;fontSize=10;fontColor=#0B4C8C;exitX=0.795;exitY=1;exitDx=0;exitDy=0;entryX=0.05;entryY=0;entryDx=0;entryDy=0;" target="sql" value="dados">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0B4C8C;fontSize=10;fontColor=#0B4C8C;jumpStyle=arc;jumpSize=10;verticalAlign=bottom;exitX=0.98;exitY=1;exitDx=0;exitDy=0;entryX=0.278;entryY=0;entryDx=0;entryDy=0;" target="storage" value="upload e publicação na fila">
+          <mxGeometry relative="1" x="0.288" as="geometry">
+            <Array as="points">
+              <mxPoint x="956" y="725" />
+              <mxPoint x="1190" y="725" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="storage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B35C00;strokeWidth=2;dashed=1;fontSize=10;fontColor=#B35C00;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.85;entryY=1;entryDx=0;entryDy=0;" target="worker" value="fila worker-jobs">
+          <mxGeometry relative="1" x="-0.565" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0B4C8C;fontSize=10;fontColor=#0B4C8C;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.944;entryY=0;entryDx=0;entryDy=0;" target="sql" value="dados">
+          <mxGeometry relative="1" x="0.652" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0E8A6E;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="openai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0E8A6E;strokeWidth=2;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.32;entryY=0;entryDx=0;entryDy=0;" target="openai">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="435" />
+              <mxPoint x="1521" y="435" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="cae" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#3C8DBC;fontSize=10;fontColor=#2A6A8F;exitX=0.15;exitY=1;exitDx=0;exitDy=0;entryX=0.55;entryY=0;entryDx=0;entryDy=0;" target="kv" value="segredos via Managed Identity">
+          <mxGeometry relative="1" x="-0.5" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="acr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0078D4;fontSize=10;fontColor=#0B4C8C;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.505;entryY=0;entryDx=0;entryDy=0;" target="cae" value="pull da imagem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="devops" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0078D4;strokeWidth=2;fontSize=10;fontColor=#0B4C8C;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="acr" value="push da imagem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="devops" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#0078D4;strokeWidth=2;fontSize=10;fontColor=#0B4C8C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.86;entryY=0;entryDx=0;entryDy=0;" target="cae" value="deploy da revisão">
+          <mxGeometry relative="1" x="-0.1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="85" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="cae" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#7A57D1;fontSize=10;fontColor=#5B3FA8;exitX=1;exitY=0.9;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="mon" value="logs e telemetria">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1405" y="633" />
+              <mxPoint x="1405" y="845" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="entra" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#505AC9;dashed=1;fontSize=10;fontColor=#3B43A8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.0968;entryY=0;entryDx=0;entryDy=0;" target="cae" value="identidades e controle de acesso (RBAC)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

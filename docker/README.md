@@ -35,7 +35,7 @@ A configuração é resolvida em quatro camadas, com uma regra que atravessa tod
 | Camada | Definida em | Exemplos | Segredo? |
 | ------ | ----------- | -------- | -------- |
 | `ARG` (build) | Dockerfile, sobrescrita por `--build-arg` na pipeline | `DOTNET_VERSION`, `VERSION`, `BUILD_CONFIGURATION`, `APP_NAME`, `NODE_VERSION` | Nunca |
-| `ENV` (imagem) | Dockerfile | `ASPNETCORE_HTTP_PORTS`, `DOTNET_EnableDiagnostics` | Nunca |
+| `ENV` (imagem) | Dockerfile | `ASPNETCORE_HTTP_PORTS` | Nunca |
 | Runtime, não sensível | Terraform, bloco `env_vars` do Container App | `ASPNETCORE_ENVIRONMENT`, `AZURE_CLIENT_ID` | Não |
 | Runtime, sensível | Key Vault, referenciado como `secret` do Container App | `ConnectionStrings__SqlDatabase`, `APPLICATIONINSIGHTS_CONNECTION_STRING`, `Redis__Host` | Sim |
 

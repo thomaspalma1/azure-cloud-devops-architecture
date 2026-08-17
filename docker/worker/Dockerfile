@@ -29,9 +29,6 @@ FROM mcr.microsoft.com/dotnet/runtime:${DOTNET_VERSION}-noble-chiseled AS final
 
 WORKDIR /app
 
-ENV DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_EnableDiagnostics=0
-
 COPY --from=publish --chown=$APP_UID:$APP_UID /app/publish .
 
 USER $APP_UID

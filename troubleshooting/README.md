@@ -34,7 +34,7 @@ Com base em como a solução foi construída, verificaria nesta ordem:
   * Esta é a causa que eu investigaria primeiro, porque envolve duas partes que precisam estar corretas ao mesmo tempo
   * Verificaria se a `Managed Identity` da aplicação possui a permissão de leitura de segredos
   * Verificaria se o nome do segredo referenciado existe no `Key Vault`
-  * O sintoma típico é o container falhar na inicialização, antes mesmo de registrar log da aplicação
+  * Nesse caso o container falha na inicialização, antes de registrar qualquer log da aplicação
 * **Falha ao baixar a imagem do registry**
   * Verificaria se a `tag` da imagem realmente existe no `Azure Container Registry`
   * Verificaria se a identidade possui a permissão `AcrPull`
@@ -68,13 +68,13 @@ Cada uma aponta para uma camada diferente do problema.
 #### Segundo passo: verificar as causas mais prováveis nesta arquitetura
 
 * **Porta incorreta**
-  * Esta seria minha primeira suspeita
-  * O `Azure Managed Redis` utiliza a porta `10000`, diferente da porta `6380` utilizada pelo `Azure Cache for Redis`
-  * Como este projeto adotou o `Azure Managed Redis`, uma configuração herdada de outro projeto ou de documentação antiga apontaria para a porta errada
+  * Começaria por aqui, porque é a verificação mais rápida de todas
+  * O `Azure Managed Redis` utiliza a porta `10000`, e não a `6380` do `Azure Cache for Redis`. Confirmaria esse valor na documentação do produto antes de descartar a hipótese
+  * Como este projeto adotou o `Azure Managed Redis`, uma configuração copiada de outro projeto ou de material antigo apontaria para a porta errada
 * **Configuração do `private endpoint`**
   * O `Redis` foi configurado sem acesso público, então a conexão depende do `private endpoint` funcionar corretamente
   * Verificaria se o `private endpoint` está aprovado e se a zona de DNS privada está vinculada à `virtual network`
-  * O sintoma de uma zona de DNS mal configurada é o nome resolver para um endereço público em vez do endereço privado
+  * Verificaria também para qual endereço o nome está resolvendo: se ele resolver para um endereço público, o problema está no DNS, e não no `Redis`
 * **Valor do segredo no `Key Vault`**
   * Verificaria se o endereço armazenado está correto e se a API está lendo o segredo esperado
 * **Estado do recurso**
@@ -104,7 +104,7 @@ Essa distinção direciona toda a investigação seguinte.
 Verificaria o volume de requisições no período, usando as métricas do `Application Insights`.
 
 * **Se o volume aumentou de fato**, o crescimento é o comportamento esperado, e a pergunta passa a ser de onde vem o tráfego
-* **Se o volume não aumentou**, investigaria se as requisições estão demorando mais que o normal, o que mantém mais conexões abertas simultaneamente e provoca o crescimento mesmo sem aumento real de acessos
+* **Se o volume não aumentou**, investigaria se as requisições estão demorando mais que o normal. Requisições mais lentas mantêm mais conexões abertas ao mesmo tempo, e isso faz a aplicação escalar mesmo sem aumento real de acessos
 
 Neste segundo caso, a causa costuma estar em uma dependência lenta. Consultaria o mapa de dependências do `Application Insights` para verificar se o banco de dados, o `Redis` ou o serviço de IA estão respondendo mais devagar.
 
@@ -156,7 +156,7 @@ Verificaria se o nome do registry na pipeline corresponde ao registry provisiona
 
 O acúmulo de imagens é o problema mais provável de voltar a acontecer, porque ele piora gradualmente.
 
-Configuraria uma política de retenção no registry para remover automaticamente imagens antigas, mantendo apenas as versões recentes e as que estão em uso.
+Manteria apenas as versões recentes e as que estão em uso. O `Azure Container Registry` oferece política de retenção automática, mas como ela depende do tier, a alternativa que funciona com o tier `Basic` provisionado aqui é um passo agendado na pipeline removendo as tags mais antigas.
 
 ## Cenário E: o Azure SQL começou a atingir 100% de DTU
 
@@ -182,7 +182,7 @@ Separo em duas categorias, porque elas resolvem problemas diferentes.
 #### Soluções imediatas, para restabelecer o serviço
 
 * **Aumentar o tier do banco**, por exemplo de `S1` para `S2`
-  * A operação é feita sem indisponibilidade
+  * A alteração de tier não exige recriar o banco, mas confirmaria na documentação qual é o impacto durante a operação
   * Resolve rapidamente, mas apenas adia o problema se a causa for uma consulta ineficiente
 * **Verificar se há bloqueios entre transações**, que podem manter recursos ocupados sem que haja carga real
 

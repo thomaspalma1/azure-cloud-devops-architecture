@@ -74,6 +74,7 @@ stages:
               buildContext: $(Build.SourcesDirectory)
               containerRegistry: $(containerRegistryConnection)
               tags: $(imageTag)
+              arguments: --build-arg VERSION=1.0.0-$(Build.BuildNumber)
 
           - task: AzureCLI@2
             displayName: Deploy no Container Apps

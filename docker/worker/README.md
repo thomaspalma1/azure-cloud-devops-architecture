@@ -45,7 +45,7 @@ O detalhamento das regras de alerta está em [`observability/`](../../observabil
 
 Idêntica à da API. Os motivos de cada decisão (ordenação por frequência de mudança, `--no-restore`, `--self-contained false`, `PublishReadyToRun`, `USER $APP_UID`, forma *exec* do `ENTRYPOINT`) estão explicados em [`api/`](../api/README.md#decisões-linha-a-linha) e não se repetem aqui, inclusive a premissa sobre copiar um único `.csproj` no estágio de restore.
 
-Uma observação sobre `PublishReadyToRun` neste componente especificamente: o ganho de startup é ainda mais relevante para o Worker do que para a API. Com autoscaling por profundidade de fila e `min_replicas = 0`, ele passa a maior parte do tempo desligado e só sobe quando há mensagens acumuladas, cada ciclo de trabalho começa com uma inicialização.
+O `PublishReadyToRun` vale ainda mais aqui do que na API: com escala por profundidade de fila e `min_replicas = 0`, o Worker fica desligado a maior parte do tempo e sobe sempre que há mensagens acumuladas, então cada ciclo de trabalho começa com uma inicialização.
 
 ### Como buildar
 

@@ -106,11 +106,18 @@ Mesma finalidade do [`.dockerignore` da API](../api/README.md#apidockerignore): 
 | `.env`, `.env.*`, `**/*.pem`, `**/*.key` | Mesma barreira contra segredo entrando na imagem, adaptada ao que aparece em um projeto front-end |
 | `**/*.spec.ts` | Testes rodam na pipeline, em etapa anterior ao build da imagem |
 
-### Por que os padrões não usam `**/`
+### Quando o padrão usa `**/`
 
-O `.dockerignore` da API prefixa quase tudo com `**/` porque uma solução .NET tem vários projetos, cada um com seu próprio `bin/` e `obj/` em subdiretórios. O repositório do front-end tem uma única aplicação na raiz, com um `node_modules/` e um `dist/` também na raiz, então o prefixo não acrescentaria nada.
+O `.dockerignore` da API prefixa quase tudo com `**/` porque uma solução .NET tem vários projetos, cada um com seu próprio `bin/` e `obj/` em subdiretórios.
 
-A diferença é deliberada: cada arquivo descreve a estrutura do repositório em que vive, em vez de replicar um padrão único nos três componentes.
+Aqui a regra é outra, e depende do que está sendo excluído:
+
+| Tipo | Padrão | Motivo |
+|---|---|---|
+| Diretórios da raiz | `node_modules/`, `dist/`, `.angular/`, `coverage/`, `.vscode/` | Existem em um lugar só, na raiz do projeto Angular, então o prefixo não acrescentaria nada |
+| Padrões por extensão | `**/*.pem`, `**/*.key`, `**/*.md`, `**/*.spec.ts`, `**/*.swp` | Podem aparecer em qualquer subpasta de `src/`, então precisam casar em qualquer nível |
+
+A diferença em relação ao `.dockerignore` da API é deliberada: cada arquivo descreve a estrutura do repositório em que vive, em vez de replicar um padrão único nos três componentes.
 
 ---
 

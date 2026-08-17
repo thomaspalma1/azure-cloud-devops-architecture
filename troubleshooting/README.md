@@ -26,7 +26,7 @@ Esse dado já separa dois casos bem diferentes: um container que **nunca subiu**
 
 Buscaria no `Log Analytics` os logs da revisão que falhou. A saída padrão do container é enviada automaticamente para o workspace, então a mensagem de erro da aplicação estaria disponível ali.
 
-#### Terceiro passo: verificar as causas mais prováveis nesta arquitetura
+#### Terceiro passo: verificar as causas prováveis na inicialização
 
 Com base em como a solução foi construída, verificaria nesta ordem:
 
@@ -45,7 +45,7 @@ Com base em como a solução foi construída, verificaria nesta ordem:
   * Se o `probe` aponta para um caminho que não responde, a plataforma considera a réplica não saudável e reinicia o container em ciclo
   * Nesta solução, o caminho configurado é `/healthz`
 
-### Um detalhe específico desta arquitetura
+### Limitação imposta pelas imagens distroless
 
 As imagens `.NET` utilizam variantes `distroless`, que **não possuem shell**. Isso significa que não é possível abrir um terminal dentro do container para investigar.
 
@@ -53,7 +53,7 @@ Essa é uma consequência assumida da decisão de segurança tomada na parte de 
 
 ## Cenário B: a API não consegue acessar o Redis
 
-### Quais verificações eu faria
+### Como eu isolaria a camada da falha
 
 #### Primeiro passo: identificar o tipo de falha
 
@@ -65,7 +65,7 @@ Consultaria os logs da API para verificar a mensagem de erro. A distinção mais
 
 Cada uma aponta para uma camada diferente do problema.
 
-#### Segundo passo: verificar as causas mais prováveis nesta arquitetura
+#### Segundo passo: verificar as causas prováveis na conexão
 
 * **Porta incorreta**
   * Começaria por aqui, porque é a verificação mais rápida de todas
@@ -80,7 +80,7 @@ Cada uma aponta para uma camada diferente do problema.
 * **Estado do recurso**
   * Verificaria se a instância está disponível e se há registro de manutenção no período
 
-### Observação sobre a configuração adotada
+### Efeito da configuração sem alta disponibilidade
 
 O `Redis` deste projeto foi provisionado **sem alta disponibilidade**, decisão tomada na parte de dimensionamento para reduzir custo em ambiente de homologação.
 
@@ -88,7 +88,7 @@ Isso significa que uma manutenção da plataforma pode causar indisponibilidade 
 
 ## Cenário C: o Container App está escalando para dezenas de réplicas inesperadamente
 
-### Como eu investigaria
+### Como eu identificaria a origem do crescimento
 
 #### Primeiro passo: identificar qual regra disparou o crescimento
 
@@ -126,7 +126,7 @@ Também há um alerta configurado para quando uma aplicação permanece no núme
 
 ## Cenário D: a pipeline falha somente no push da imagem para o Azure Container Registry
 
-### Como eu resolveria
+### Como eu resolveria a falha no push
 
 O fato de a falha ocorrer **apenas nesta etapa** já elimina boa parte das possibilidades. Se o build da imagem funcionou, o problema não está no `Dockerfile` nem no código.
 
@@ -160,7 +160,7 @@ Manteria apenas as versões recentes e as que estão em uso. O `Azure Container 
 
 ## Cenário E: o Azure SQL começou a atingir 100% de DTU
 
-### Como eu investigaria
+### Como eu investigaria o consumo
 
 #### Primeiro passo: identificar o que está consumindo
 
@@ -193,7 +193,7 @@ Separo em duas categorias, porque elas resolvem problemas diferentes.
 * **Aproveitar melhor o cache**, movendo para o `Redis` consultas repetidas de dados que mudam pouco
 * **Revisar a origem da carga**, verificando se alguma rotina do Worker está executando com frequência maior que a necessária
 
-### Observação sobre esta arquitetura
+### Relação com o Worker e o cache
 
 A solução já possui `Redis` provisionado, então avaliar o que poderia ser cacheado seria uma das primeiras alternativas que eu consideraria antes de aumentar o tier do banco.
 

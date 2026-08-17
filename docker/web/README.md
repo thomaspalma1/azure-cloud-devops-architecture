@@ -51,6 +51,8 @@ docker build --build-arg BUILD_CONFIGURATION=homolog ...
 
 Como o resultado do build é servido ao navegador, **nada do que entra aqui é secreto**: qualquer valor embutido nos bundles é legível por quem abrir a aplicação.
 
+A consequência prática aparece no Terraform: o Container App do `web` é o único dos três que **não recebe `env_vars` nem `secrets`**. Não haveria a quem entregá-las, porque dentro do container só existe o nginx servindo arquivos, e a configuração da aplicação já foi resolvida no build. Isso inclui a connection string do Application Insights, que é compilada no bundle e usada pelo navegador, não lida por um processo no container.
+
 ### Por que `nginx-unprivileged` e não `nginx`
 
 Esta é a principal decisão de segurança deste arquivo.

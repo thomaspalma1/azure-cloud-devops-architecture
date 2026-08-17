@@ -2,7 +2,7 @@
 
 Corresponde à **Parte 3** do teste técnico.
 
-Esta seção atende ao seguinte requisito do enunciado:
+Esta seção cobre a organização dos Dockerfiles, o multi-stage build, a redução de tamanho das imagens, as boas práticas de segurança e o gerenciamento de variáveis de ambiente.
 
 **Premissa assumida:** o cenário do teste é hipotético e não há código-fonte real da aplicação. O próprio enunciado pede *"Dockerfiles (exemplo)"*. Os arquivos aqui assumem uma estrutura de projeto convencional (`src/Api`, `src/Worker`, `package.json` na raiz) e são funcionais, bastaria o código real na estrutura esperada para que buildassem.
 

@@ -221,13 +221,9 @@ module "container_app_web" {
 
   # O container do front-end roda nginx servindo arquivos estaticos, nao um processo .NET.
   # A configuracao da aplicacao Angular e resolvida em build time (--build-arg
-  # BUILD_CONFIGURATION), entao nao ha variavel de ambiente de runtime a injetar aqui.
-  secrets = {
-    "appinsights-connection-string" = {
-      key_vault_secret_id = azurerm_key_vault_secret.app_insights_connection_string.versionless_id
-      env_var_name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
-    }
-  }
+  # BUILD_CONFIGURATION), inclusive a connection string do Application Insights, que e
+  # compilada no bundle e usada pelo navegador. Por isso este modulo nao recebe env_vars
+  # nem secrets: nao ha processo lendo configuracao em runtime dentro do container.
 
   tags = local.tags
 }

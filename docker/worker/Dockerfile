@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 ARG DOTNET_VERSION=10.0
 
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}-noble AS restore

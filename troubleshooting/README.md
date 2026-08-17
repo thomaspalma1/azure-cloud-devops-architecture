@@ -16,17 +16,17 @@ Sempre que possível, indiquei também **como a causa apontada se relaciona com 
 
 ### Como eu descobriria a causa
 
-**Primeiro passo: verificar o estado da revisão**
+#### Primeiro passo: verificar o estado da revisão
 
 Consultaria o estado da revisão criada pelo deploy. O `Container Apps` mostra se ela está em execução, se falhou ao iniciar ou se está reiniciando repetidamente.
 
 Esse dado já separa dois casos bem diferentes: um container que **nunca subiu** e um container que **sobe e cai logo em seguida**.
 
-**Segundo passo: consultar os logs do container**
+#### Segundo passo: consultar os logs do container
 
 Buscaria no `Log Analytics` os logs da revisão que falhou. A saída padrão do container é enviada automaticamente para o workspace, então a mensagem de erro da aplicação estaria disponível ali.
 
-**Terceiro passo: verificar as causas mais prováveis nesta arquitetura**
+#### Terceiro passo: verificar as causas mais prováveis nesta arquitetura
 
 Com base em como a solução foi construída, verificaria nesta ordem:
 
@@ -55,7 +55,7 @@ Essa é uma consequência assumida da decisão de segurança tomada na parte de 
 
 ### Quais verificações eu faria
 
-**Primeiro passo: identificar o tipo de falha**
+#### Primeiro passo: identificar o tipo de falha
 
 Consultaria os logs da API para verificar a mensagem de erro. A distinção mais importante é entre:
 
@@ -65,7 +65,7 @@ Consultaria os logs da API para verificar a mensagem de erro. A distinção mais
 
 Cada uma aponta para uma camada diferente do problema.
 
-**Segundo passo: verificar as causas mais prováveis nesta arquitetura**
+#### Segundo passo: verificar as causas mais prováveis nesta arquitetura
 
 * **Porta incorreta**
   * Esta seria minha primeira suspeita
@@ -90,16 +90,16 @@ Isso significa que uma manutenção da plataforma pode causar indisponibilidade 
 
 ### Como eu investigaria
 
-**Primeiro passo: identificar qual regra disparou o crescimento**
+#### Primeiro passo: identificar qual regra disparou o crescimento
 
 Nesta solução, as aplicações escalam por critérios diferentes, então a primeira pergunta é **qual aplicação** está escalando:
 
 * A API e o front-end escalam pelo número de requisições simultâneas
-* O `Worker` escala pela quantidade de mensagens na fila
+* O Worker escala pela quantidade de mensagens na fila
 
 Essa distinção direciona toda a investigação seguinte.
 
-**Segundo passo, se for a API ou o front-end**
+#### Segundo passo: se for a API ou o front-end
 
 Verificaria o volume de requisições no período, usando as métricas do `Application Insights`.
 
@@ -108,7 +108,7 @@ Verificaria o volume de requisições no período, usando as métricas do `Appli
 
 Neste segundo caso, a causa costuma estar em uma dependência lenta. Consultaria o mapa de dependências do `Application Insights` para verificar se o banco de dados, o `Redis` ou o serviço de IA estão respondendo mais devagar.
 
-**Terceiro passo, se for o `Worker`**
+#### Terceiro passo: se for o Worker
 
 Verificaria a quantidade de mensagens na fila. As possibilidades são:
 
@@ -130,25 +130,25 @@ Também há um alerta configurado para quando uma aplicação permanece no núme
 
 O fato de a falha ocorrer **apenas nesta etapa** já elimina boa parte das possibilidades. Se o build da imagem funcionou, o problema não está no `Dockerfile` nem no código.
 
-**Primeiro passo: verificar a permissão**
+#### Primeiro passo: verificar a permissão
 
 Esta seria minha primeira suspeita. A identidade utilizada pela pipeline precisa de permissão de escrita no registry, e a permissão de leitura não é suficiente para publicar.
 
 Verificaria se a `service connection` do `Azure DevOps` está associada a uma identidade com a permissão adequada.
 
-**Segundo passo: verificar a autenticação**
+#### Segundo passo: verificar a autenticação
 
 Se o projeto utilizasse `service principal` com chave, verificaria se a chave expirou. Esse é um problema clássico, porque a pipeline funciona por meses e falha de repente sem que nada tenha mudado no código.
 
 Neste projeto propus a **federação de credenciais**, justamente para eliminar esse tipo de falha, já que não há chave com prazo de validade.
 
-**Terceiro passo: verificar o espaço disponível**
+#### Terceiro passo: verificar o espaço disponível
 
-O registry foi provisionado no tier `Basic`, que inclui `10 GB` de armazenamento. Se o limite for atingido, a publicação passa a falhar.
+O registry foi provisionado no tier `Basic`, que inclui **10 GB** de armazenamento. Se o limite for atingido, a publicação passa a falhar.
 
 Verificaria o consumo atual e, se for o caso, removeria imagens antigas ou avaliaria a mudança de tier.
 
-**Quarto passo: verificar o nome do repositório e a tag**
+#### Quarto passo: verificar o nome do repositório e a tag
 
 Verificaria se o nome do registry na pipeline corresponde ao registry provisionado e se a `tag` está sendo gerada corretamente a partir da variável de build.
 
@@ -162,11 +162,11 @@ Configuraria uma política de retenção no registry para remover automaticament
 
 ### Como eu investigaria
 
-**Primeiro passo: identificar o que está consumindo**
+#### Primeiro passo: identificar o que está consumindo
 
 A métrica de `DTU` combina processamento, leitura e escrita em um único indicador. Verificaria qual desses componentes está no limite, porque cada um aponta para uma causa diferente.
 
-**Segundo passo: identificar as consultas mais custosas**
+#### Segundo passo: identificar as consultas mais custosas
 
 Utilizaria o `Query Performance Insight`, que mostra as consultas com maior consumo de recursos no período.
 
@@ -179,39 +179,39 @@ Compararia com o comportamento anterior para responder a uma pergunta central: *
 
 Separo em duas categorias, porque elas resolvem problemas diferentes.
 
-**Soluções imediatas, para restabelecer o serviço**
+#### Soluções imediatas, para restabelecer o serviço
 
 * **Aumentar o tier do banco**, por exemplo de `S1` para `S2`
   * A operação é feita sem indisponibilidade
   * Resolve rapidamente, mas apenas adia o problema se a causa for uma consulta ineficiente
 * **Verificar se há bloqueios entre transações**, que podem manter recursos ocupados sem que haja carga real
 
-**Soluções estruturais, para evitar a recorrência**
+#### Soluções estruturais, para evitar a recorrência
 
 * **Revisar índices**, que costuma ser a correção de maior impacto quando o problema está em consultas de leitura
 * **Ajustar as consultas mais custosas** identificadas na análise
 * **Aproveitar melhor o cache**, movendo para o `Redis` consultas repetidas de dados que mudam pouco
-* **Revisar a origem da carga**, verificando se alguma rotina do `Worker` está executando com frequência maior que a necessária
+* **Revisar a origem da carga**, verificando se alguma rotina do Worker está executando com frequência maior que a necessária
 
 ### Observação sobre esta arquitetura
 
 A solução já possui `Redis` provisionado, então avaliar o que poderia ser cacheado seria uma das primeiras alternativas que eu consideraria antes de aumentar o tier do banco.
 
-Vale também registrar uma particularidade do ambiente: o `Worker` escala automaticamente conforme a quantidade de mensagens na fila. Se ele estiver escalando bastante, **mais réplicas acessam o banco ao mesmo tempo**, o que pode ser a origem do consumo elevado.
+Vale também registrar uma particularidade do ambiente: o Worker escala automaticamente conforme a quantidade de mensagens na fila. Se ele estiver escalando bastante, **mais réplicas acessam o banco ao mesmo tempo**, o que pode ser a origem do consumo elevado.
 
-Nesse caso, o problema não está no banco, mas no comportamento do `Worker`, e a solução seria limitar a quantidade de réplicas ou revisar o que cada uma executa. Este é um exemplo de por que considero importante investigar a causa antes de simplesmente aumentar o tier.
+Nesse caso, o problema não está no banco, mas no comportamento do Worker, e a solução seria limitar a quantidade de réplicas ou revisar o que cada uma executa. Este é um exemplo de por que considero importante investigar a causa antes de simplesmente aumentar o tier.
 
 ## Como a observabilidade apoia estes cenários
 
 Os recursos definidos na parte de observabilidade foram escolhidos considerando situações como estas. A relação entre eles e os cenários é direta:
 
 | Cenário | Recurso que ajudaria na investigação |
-|---------|--------------------------------------|
-| A: container não inicia | Logs do container no `Log Analytics` |
-| B: API não acessa o `Redis` | Logs da API e mapa de dependências do `Application Insights` |
-| C: escalando inesperadamente | Métricas de réplicas, requisições e profundidade da fila |
-| D: falha no push da imagem | Log de execução da pipeline no `Azure DevOps` |
-| E: `DTU` em 100% | Alerta de `DTU`, métricas do banco e `Query Performance Insight` |
+| ------- | ------------------------------------ |
+| **A**: container não inicia | Logs do container no `Log Analytics` |
+| **B**: API não acessa o `Redis` | Logs da API e mapa de dependências do `Application Insights` |
+| **C**: escalando inesperadamente | Métricas de réplicas, requisições e profundidade da fila |
+| **D**: falha no push da imagem | Log de execução da pipeline no `Azure DevOps` |
+| **E**: `DTU` em 100% | Alerta de `DTU`, métricas do banco e `Query Performance Insight` |
 
 Em quatro dos cinco cenários, a informação necessária **já estaria sendo coletada** antes do problema acontecer. Considero que esse é o principal valor de configurar observabilidade antecipadamente: no momento do incidente, o histórico já existe e não é preciso esperar o problema se repetir para começar a investigar.
 

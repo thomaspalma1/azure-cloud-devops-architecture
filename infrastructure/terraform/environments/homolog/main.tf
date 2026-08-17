@@ -171,9 +171,10 @@ module "container_app_api" {
     target_port      = 8080
   }
 
+  # A porta de escuta e definida no proprio Dockerfile (ASPNETCORE_HTTP_PORTS=8080)
+  # e refletida aqui apenas no target_port do ingress, para nao existir em dois lugares.
   env_vars = {
     ASPNETCORE_ENVIRONMENT = "Homolog"
-    ASPNETCORE_HTTP_PORTS  = "8080"
   }
 
   secrets = {
@@ -218,11 +219,9 @@ module "container_app_web" {
     target_port      = 8080
   }
 
-  env_vars = {
-    ASPNETCORE_ENVIRONMENT = "Homolog"
-    ASPNETCORE_HTTP_PORTS  = "8080"
-  }
-
+  # O container do front-end roda nginx servindo arquivos estaticos, nao um processo .NET.
+  # A configuracao da aplicacao Angular e resolvida em build time (--build-arg
+  # BUILD_CONFIGURATION), entao nao ha variavel de ambiente de runtime a injetar aqui.
   secrets = {
     "appinsights-connection-string" = {
       key_vault_secret_id = azurerm_key_vault_secret.app_insights_connection_string.versionless_id

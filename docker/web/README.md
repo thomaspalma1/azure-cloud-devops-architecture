@@ -139,8 +139,8 @@ Esse valor também precisa coincidir com o `targetPort` do ingress configurado n
 
 ```nginx
 location / {
-    add_header Cache-Control "no-store" always;
-    try_files  $uri $uri/ /index.html;
+    expires -1;
+    try_files $uri $uri/ /index.html;
 }
 ```
 
@@ -154,19 +154,23 @@ O roteamento de uma aplicação Angular acontece no navegador: `/pedidos/123` n�
 
 A configuração aplica políticas deliberadamente diferentes por tipo de arquivo:
 
-| Recurso | Política | Motivo |
+| Recurso | Diretiva | Cabeçalho resultante |
 |---|---|---|
-| `index.html` (via `location /`) | `no-store` | Referencia os bundles do deploy atual; nunca pode ficar defasado |
-| Assets com hash (`.js`, `.css`, fontes, imagens) | `public, immutable, max-age=31536000` | O nome do arquivo contém o hash do conteúdo, se o conteúdo muda, o nome muda. Cache agressivo é seguro e elimina requisições desnecessárias |
+| Bundles gerados pelo build (`.js`, `.css`, fontes) | `expires 1y` | `Cache-Control: max-age=31536000` |
+| `index.html` e demais arquivos (via `location /`) | `expires -1` | `Cache-Control: no-cache` |
 
-Essa combinação é o que permite deploys sem invalidação manual de cache: o `index.html` é sempre buscado do servidor e aponta para os bundles corretos, enquanto os bundles, imutáveis por definição, permanecem no cache do navegador entre visitas. Sem o `no-store` no `index.html`, uma cópia cacheada apontaria para bundles de um deploy anterior que já não existem, resultando em aplicação quebrada após cada deploy.
+Os bundles têm o hash do conteúdo no nome: se o conteúdo muda, o nome muda. Cachear por um ano é seguro e elimina requisições a cada visita.
+
+O `index.html` é o oposto: referencia os bundles do deploy atual e nunca pode ficar defasado. `no-cache` não impede o navegador de guardá-lo, apenas obriga a revalidar antes de usar — o servidor responde `304` quando nada mudou, ou entrega a versão nova após um deploy. É isso que permite publicar sem invalidar cache manualmente.
+
+O cache longo cobre apenas o que o build do Angular versiona por hash. Os arquivos de `src/assets/` são copiados mantendo o nome original, então um `assets/logo.png` cacheado por um ano nunca seria atualizado. Por isso imagens e ícones caem no `location /`.
 
 ### Endpoint `/healthz`
 
 ```nginx
 location = /healthz {
-    access_log off;
-    add_header Content-Type text/plain;
+    access_log   off;
+    default_type text/plain;
     return 200 'healthy';
 }
 ```
@@ -193,29 +197,29 @@ O `return 200` responde diretamente, sem tocar o disco. Um health check que depe
 
 O parâmetro `always` garante que os cabeçalhos sejam enviados também em respostas de erro (4xx, 5xx). Sem ele, o nginx os omite nessas respostas, que são páginas servidas ao navegador como qualquer outra.
 
-#### Por que os cabeçalhos são repetidos em cada `location`
+Os quatro são declarados **uma única vez**, no nível `server`, e valem para todas as rotas.
 
-Uma particularidade do nginx que costuma passar despercebida: **`add_header` só é herdado do bloco pai se o bloco filho não declarar nenhum `add_header` próprio**. Não há mesclagem, o bloco filho substitui integralmente a lista herdada.
+> **Cuidado ao editar:** isso só funciona porque nenhum `location` declara `add_header` próprio. O nginx não mescla essa diretiva — um bloco filho com `add_header` substitui integralmente a lista herdada, e os cabeçalhos de segurança sumiriam daquela rota. É por isso que o cache usa `expires` e o `/healthz` usa `default_type`, em vez de `add_header`. O `nginx -t` continuaria passando; o problema só apareceria ao inspecionar uma resposta real.
 
-Como todos os `location` aqui precisam definir seu próprio `Cache-Control`, declarar os cabeçalhos de segurança apenas no nível `server` faria com que eles **fossem descartados em todas as rotas**. O `nginx -t` passa, a aplicação funciona normalmente, e o problema só aparece ao inspecionar os cabeçalhos de uma resposta real.
-
-A alternativa seria extrair os cabeçalhos para um `security-headers.conf` e usar `include` em cada bloco. Optamos pela repetição por manter a solução em um único arquivo, dado que são apenas dois blocos que servem conteúdo.
-
-`server_tokens off` permanece no nível `server` porque não é um `add_header`, é uma diretiva própria e é herdada normalmente. Ela remove a versão do nginx do header `Server` e das páginas de erro.
+`server_tokens off` remove a versão do nginx do header `Server` e das páginas de erro.
 
 > **O que não está aqui:** `Content-Security-Policy` e `Strict-Transport-Security`. A CSP depende do que a aplicação real carrega (CDNs, fontes externas, scripts inline do Angular) e uma política genérica quebraria a aplicação ou seria permissiva demais para ter valor. Já o HSTS não faz sentido neste arquivo porque o TLS termina no ingress do Container Apps: o nginx aqui recebe a requisição já sem TLS, então esse cabeçalho pertence à camada do ingress, e é um dos pontos que eu verificaria antes de expor o ambiente.
 
 ### Compressão
 
 ```nginx
-gzip on;
+gzip            on;
+gzip_vary       on;
 gzip_min_length 1024;
-gzip_types text/plain text/css text/javascript application/javascript ...;
+gzip_proxied    any;
+gzip_types      text/css text/javascript application/javascript application/json image/svg+xml;
 ```
 
 Bundles JavaScript de aplicações Angular são grandes e comprimem bem. `gzip_min_length 1024` evita comprimir arquivos pequenos, onde o custo de CPU supera a economia de banda.
 
 `gzip_vary on` adiciona o header `Vary: Accept-Encoding`, necessário para que caches intermediários armazenem separadamente as versões comprimida e não comprimida.
+
+`gzip_proxied any` existe por causa do ingress do Container Apps: o nginx nunca recebe a requisição diretamente do navegador, e por padrão o nginx **não** comprime respostas de requisições que chegam marcadas como proxied.
 
 A lista de tipos **não inclui imagens rasterizadas** (`png`, `jpg`, `gif`): esses formatos já são comprimidos, e reprocessá-los apenas consome CPU. O `image/svg+xml` está na lista porque SVG é XML, texto, e comprime bem.
 
@@ -235,3 +239,13 @@ Saída esperada:
 nginx: configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
+
+O `nginx -t` valida apenas a sintaxe. Como os cabeçalhos dependem de regras de herança, vale conferir uma resposta real subindo o container com os arquivos do build e inspecionando as rotas:
+
+```bash
+curl -I http://localhost:8080/index.html   # espera Cache-Control: no-cache
+curl -I http://localhost:8080/main.<hash>.js   # espera Cache-Control: max-age=31536000
+curl -I http://localhost:8080/rota-inexistente  # espera 200 (fallback da SPA)
+```
+
+Os quatro cabeçalhos de segurança devem aparecer nas três respostas, e também em um `404`, por causa do `always`.

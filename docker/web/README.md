@@ -135,6 +135,10 @@ Coerente com a imagem `nginx-unprivileged` e com o `EXPOSE 8080` do Dockerfile. 
 
 Esse valor também precisa coincidir com o `targetPort` do ingress configurado no Container App, divergência aqui produz um container que sobe normalmente mas nunca recebe tráfego, sintoma tratado no [Cenário A](../../troubleshooting/README.md) da Parte 10.
 
+### `root /usr/share/nginx/html`
+
+Aponta para o diretório onde o Dockerfile copiou a saída do build do Angular. É o único ponto de acoplamento entre os dois arquivos: mudar o destino do `COPY` exige mudar o `root` junto.
+
 ### SPA fallback
 
 ```nginx
